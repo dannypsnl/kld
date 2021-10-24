@@ -1,5 +1,5 @@
 add_rules("mode.debug", "mode.release")
-set_languages("c99", "c++17")
+set_languages("c11", "c++17")
 set_warnings("all", "error")
 
 target("kld")
