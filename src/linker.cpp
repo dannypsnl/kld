@@ -2,12 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
-Block::Block(char *d, unsigned int off, unsigned int s) {
-  data = d;
-  offset = off;
-  size = s;
-}
-
+Block::Block(char *d, unsigned int off, unsigned int s)
+    : data{d}, offset{off}, size{s} {}
 Block::~Block() { delete[] data; }
 
 SegList::~SegList() {
@@ -50,19 +46,18 @@ void SegList::allocAddr(string name, unsigned int &base, unsigned int &off) {
 void SegList::relocAddr(unsigned int relAddr, unsigned char type,
                         unsigned int symAddr) {
   unsigned int relOffset = relAddr - baseAddr;
-  Block *b = NULL;
   for (int i = 0; i < blocks.size(); ++i) {
     if (blocks[i]->offset <= relOffset &&
         blocks[i]->offset + blocks[i]->size > relOffset) {
-      b = blocks[i];
-      break;
+      auto b = blocks[i];
+      int *pAddr = (int *)(b->data + relOffset - b->offset);
+      if (type == R_386_32) {
+        *pAddr = symAddr;
+      } else if (type == R_386_PC32) {
+        *pAddr = symAddr - relAddr + *pAddr;
+      }
+      return;
     }
-  }
-  int *pAddr = (int *)(b->data + relOffset - b->offset);
-  if (type == R_386_32) {
-    *pAddr = symAddr;
-  } else if (type == R_386_PC32) {
-    *pAddr = symAddr - relAddr + *pAddr;
   }
 }
 
@@ -110,14 +105,17 @@ bool Linker::symbol_is_valid() {
   startOwner = NULL;
   for (int i = 0; i < symDef.size(); ++i) {
     if (ELF32_ST_BIND(symDef[i]->prov->symTab[symDef[i]->name]->st_info) !=
-        STB_GLOBAL)
+        STB_GLOBAL) {
       continue;
-    if (symDef[i]->name == START)
+    }
+    if (symDef[i]->name == START) {
       startOwner = symDef[i]->prov;
+    }
     for (int j = i + 1; j < symDef.size(); ++j) {
       if (ELF32_ST_BIND(symDef[j]->prov->symTab[symDef[j]->name]->st_info) !=
-          STB_GLOBAL)
+          STB_GLOBAL) {
         continue;
+      }
       if (symDef[i]->name == symDef[j]->name) {
         printf("symbol %s in %s and %s are redefined.\n",
                symDef[i]->name.c_str(), symDef[i]->prov->elf_dir,
@@ -146,17 +144,19 @@ bool Linker::symbol_is_valid() {
       unsigned char info =
           symLinks[i]->recv->symTab[symLinks[i]->name]->st_info;
       string type;
-      if (ELF32_ST_TYPE(info) == STT_OBJECT)
+      if (ELF32_ST_TYPE(info) == STT_OBJECT) {
         type = "variable";
-      else if (ELF32_ST_TYPE(info) == STT_FUNC)
+      } else if (ELF32_ST_TYPE(info) == STT_FUNC) {
         type = "function";
-      else
+      } else {
         type = "symbol";
+      }
       printf("in file %s type %s named %s is undefined.\n",
              symLinks[i]->recv->elf_dir, type.c_str(),
              symLinks[i]->name.c_str());
-      if (flag)
+      if (flag) {
         flag = false;
+      }
     }
   }
   return flag;
@@ -221,10 +221,12 @@ void Linker::assemble_executable() {
 
     Elf32_Word flags = PF_W | PF_R;
     Elf32_Word filesz = segLists[name]->size;
-    if (name == ".text")
+    if (name == ".text") {
       flags = PF_X | PF_R;
-    if (name == ".bss")
+    }
+    if (name == ".bss") {
       filesz = 0;
+    }
     exe.add_program_header(PT_LOAD, segLists[name]->offset,
                            segLists[name]->baseAddr, filesz,
                            segLists[name]->size, flags, MEM_ALIGN);
@@ -233,8 +235,9 @@ void Linker::assemble_executable() {
     Elf32_Word sh_type = SHT_PROGBITS;
     Elf32_Word sh_flags = SHF_ALLOC | SHF_WRITE;
     Elf32_Word sh_align = 4;
-    if (name == ".bss")
+    if (name == ".bss") {
       sh_type = SHT_NOBITS;
+    }
     if (name == ".text") {
       sh_flags = SHF_ALLOC | SHF_EXECINSTR;
       sh_align = 16;
@@ -249,7 +252,7 @@ void Linker::assemble_executable() {
   char *str = exe.shstrtab = new char[shstrtabSize];
   exe.shstrtabSize = shstrtabSize;
   int index = 0;
-  map<string, int> shstrIndex;
+  map<string, int> shstrIndex{};
   shstrIndex[".shstrtab"] = index;
   strcpy(str + index, ".shstrtab");
   index += 10;
@@ -350,17 +353,15 @@ bool Linker::link(const char *dir) {
 }
 
 Linker::~Linker() {
-  for (map<string, SegList *>::iterator i = segLists.begin();
-       i != segLists.end(); ++i) {
+  for (auto i = segLists.begin(); i != segLists.end(); ++i) {
     delete i->second;
   }
   segLists.clear();
-  for (vector<SymLink *>::iterator i = symLinks.begin(); i != symLinks.end();
-       ++i) {
+  for (auto i = symLinks.begin(); i != symLinks.end(); ++i) {
     delete *i;
   }
   symLinks.clear();
-  for (vector<SymLink *>::iterator i = symDef.begin(); i != symDef.end(); ++i) {
+  for (auto i = symDef.begin(); i != symDef.end(); ++i) {
     delete *i;
   }
   symDef.clear();
