@@ -10,7 +10,7 @@ RelItem::RelItem(string sname, Elf32_Rel *r, string rname) {
 
 RelItem::~RelItem() { delete rel; }
 
-void Elf_file::getData(char *buf, Elf32_Off offset, Elf32_Word size) {
+void Elf_file::get_data(char *buf, Elf32_Off offset, Elf32_Word size) {
   FILE *fp = fopen(elf_dir, "rb");
   rewind(fp);
   fseek(fp, offset, 0);
@@ -24,7 +24,7 @@ Elf_file::Elf_file() {
   elf_dir = NULL;
 }
 
-void Elf_file::readElf(const char *dir) {
+void Elf_file::read_elf(const char *dir) {
   string d = dir;
   elf_dir = new char[d.length() + 1];
   strcpy(elf_dir, dir);
@@ -121,9 +121,10 @@ int Elf_file::getSymIndex(string symName) {
   return index;
 }
 
-void Elf_file::addPhdr(Elf32_Word type, Elf32_Off off, Elf32_Addr vaddr,
-                       Elf32_Word filesz, Elf32_Word memsz, Elf32_Word flags,
-                       Elf32_Word align) {
+void Elf_file::add_program_header(Elf32_Word type, Elf32_Off off,
+                                  Elf32_Addr vaddr, Elf32_Word filesz,
+                                  Elf32_Word memsz, Elf32_Word flags,
+                                  Elf32_Word align) {
   Elf32_Phdr *ph = new Elf32_Phdr();
   ph->p_type = type;
   ph->p_offset = off;
@@ -135,11 +136,12 @@ void Elf_file::addPhdr(Elf32_Word type, Elf32_Off off, Elf32_Addr vaddr,
   phdrTab.push_back(ph);
 }
 
-void Elf_file::addShdr(string sh_name, Elf32_Word sh_type, Elf32_Word sh_flags,
-                       Elf32_Addr sh_addr, Elf32_Off sh_offset,
-                       Elf32_Word sh_size, Elf32_Word sh_link,
-                       Elf32_Word sh_info, Elf32_Word sh_addralign,
-                       Elf32_Word sh_entsize) //添加一个段表项
+void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
+                                  Elf32_Word sh_flags, Elf32_Addr sh_addr,
+                                  Elf32_Off sh_offset, Elf32_Word sh_size,
+                                  Elf32_Word sh_link, Elf32_Word sh_info,
+                                  Elf32_Word sh_addralign,
+                                  Elf32_Word sh_entsize) //添加一个段表项
 {
   Elf32_Shdr *sh = new Elf32_Shdr();
   sh->sh_name = 0;
@@ -156,7 +158,7 @@ void Elf_file::addShdr(string sh_name, Elf32_Word sh_type, Elf32_Word sh_flags,
   shdrNames.push_back(sh_name);
 }
 
-void Elf_file::addSym(string st_name, Elf32_Sym *s) {
+void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
   Elf32_Sym *sym = symTab[st_name] = new Elf32_Sym();
   if (st_name == "") {
     sym->st_name = 0;
@@ -176,7 +178,7 @@ void Elf_file::addSym(string st_name, Elf32_Sym *s) {
   symNames.push_back(st_name);
 }
 
-void Elf_file::writeElf(const char *dir, int flag) {
+void Elf_file::write_elf(const char *dir, int flag) {
   if (flag == 1) {
     FILE *fp = fopen(dir, "w+");
     fwrite(&ehdr, ehdr.e_ehsize, 1, fp);

@@ -36,7 +36,7 @@ void SegList::allocAddr(string name, unsigned int &base, unsigned int &off) {
     Elf32_Shdr *seg = ownerList[i]->shdrTab[name];
     if (name != ".bss") {
       char *buf = new char[seg->sh_size];
-      ownerList[i]->getData(buf, seg->sh_offset, seg->sh_size);
+      ownerList[i]->get_data(buf, seg->sh_offset, seg->sh_size);
       blocks.push_back(new Block(buf, size, seg->sh_size));
     }
     seg->sh_addr = base + size;
@@ -74,13 +74,13 @@ Linker::Linker() {
     segLists[segNames[i]] = new SegList();
 }
 
-void Linker::addElf(const char *dir) {
+void Linker::add_elf(const char *dir) {
   Elf_file *elf = new Elf_file();
-  elf->readElf(dir);
+  elf->read_elf(dir);
   elfs.push_back(elf);
 }
 
-void Linker::collectInfo() {
+void Linker::collect_info() {
   for (int i = 0; i < elfs.size(); ++i) {
     Elf_file *elf = elfs[i];
     for (int i = 0; i < segNames.size(); ++i)
@@ -105,7 +105,7 @@ void Linker::collectInfo() {
   }
 }
 
-bool Linker::symValid() {
+bool Linker::symbol_is_valid() {
   bool flag = true;
   startOwner = NULL;
   for (int i = 0; i < symDef.size(); ++i) {
@@ -162,7 +162,7 @@ bool Linker::symValid() {
   return flag;
 }
 
-void Linker::allocAddr() {
+void Linker::alloc_addr() {
   unsigned int curAddr = BASE_ADDR;
   unsigned int curOff = 52 + 32 * segNames.size();
   for (int i = 0; i < segNames.size(); ++i) {
@@ -170,7 +170,7 @@ void Linker::allocAddr() {
   }
 }
 
-void Linker::symParser() {
+void Linker::symbol_parser() {
   for (int i = 0; i < symDef.size(); ++i) {
     Elf32_Sym *sym = symDef[i]->prov->symTab[symDef[i]->name];
     string segName = symDef[i]->prov->shdrNames[sym->st_shndx];
@@ -198,7 +198,7 @@ void Linker::relocate() {
   }
 }
 
-void Linker::assemExe() {
+void Linker::assemble_executable() {
   int *p_id = (int *)exe.ehdr.e_ident;
   *p_id = 0x464c457f;
   p_id++;
@@ -213,7 +213,7 @@ void Linker::assemExe() {
   exe.ehdr.e_flags = 0;
   exe.ehdr.e_ehsize = 52;
   unsigned int curOff = 52 + 32 * segNames.size();
-  exe.addShdr("", 0, 0, 0, 0, 0, 0, 0, 0, 0);
+  exe.add_section_header("", 0, 0, 0, 0, 0, 0, 0, 0, 0);
   int shstrtabSize = 26;
   for (int i = 0; i < segNames.size(); ++i) {
     string name = segNames[i];
@@ -225,8 +225,9 @@ void Linker::assemExe() {
       flags = PF_X | PF_R;
     if (name == ".bss")
       filesz = 0;
-    exe.addPhdr(PT_LOAD, segLists[name]->offset, segLists[name]->baseAddr,
-                filesz, segLists[name]->size, flags, MEM_ALIGN);
+    exe.add_program_header(PT_LOAD, segLists[name]->offset,
+                           segLists[name]->baseAddr, filesz,
+                           segLists[name]->size, flags, MEM_ALIGN);
     curOff = segLists[name]->offset;
 
     Elf32_Word sh_type = SHT_PROGBITS;
@@ -238,9 +239,9 @@ void Linker::assemExe() {
       sh_flags = SHF_ALLOC | SHF_EXECINSTR;
       sh_align = 16;
     }
-    exe.addShdr(name, sh_type, sh_flags, segLists[name]->baseAddr,
-                segLists[name]->offset, segLists[name]->size, SHN_UNDEF, 0,
-                sh_align, 0);
+    exe.add_section_header(name, sh_type, sh_flags, segLists[name]->baseAddr,
+                           segLists[name]->offset, segLists[name]->size,
+                           SHN_UNDEF, 0, sh_align, 0);
   }
   exe.ehdr.e_phoff = 52;
   exe.ehdr.e_phentsize = 32;
@@ -264,30 +265,30 @@ void Linker::assemExe() {
     strcpy(str + index, segNames[i].c_str());
     index += segNames[i].length() + 1;
   }
-  exe.addShdr(".shstrtab", SHT_STRTAB, 0, 0, curOff, shstrtabSize, SHN_UNDEF, 0,
-              1, 0);
+  exe.add_section_header(".shstrtab", SHT_STRTAB, 0, 0, curOff, shstrtabSize,
+                         SHN_UNDEF, 0, 1, 0);
   exe.ehdr.e_shstrndx = exe.getSegIndex(".shstrtab");
   curOff += shstrtabSize;
   exe.ehdr.e_shoff = curOff;
   exe.ehdr.e_shentsize = 40;
   exe.ehdr.e_shnum = 4 + segNames.size();
   curOff += 40 * (4 + segNames.size());
-  exe.addShdr(".symtab", SHT_SYMTAB, 0, 0, curOff, (1 + symDef.size()) * 16, 0,
-              0, 1, 16);
+  exe.add_section_header(".symtab", SHT_SYMTAB, 0, 0, curOff,
+                         (1 + symDef.size()) * 16, 0, 0, 1, 16);
   exe.shdrTab[".symtab"]->sh_link = exe.getSegIndex(".symtab") + 1;
   int strtabSize = 0;
-  exe.addSym("", NULL);
+  exe.add_symbol("", NULL);
   for (int i = 0; i < symDef.size(); ++i) {
     string name = symDef[i]->name;
     strtabSize += name.length() + 1;
     Elf32_Sym *sym = symDef[i]->prov->symTab[name];
     sym->st_shndx = exe.getSegIndex(symDef[i]->prov->shdrNames[sym->st_shndx]);
-    exe.addSym(name, sym);
+    exe.add_symbol(name, sym);
   }
   exe.ehdr.e_entry = exe.symTab[START]->st_value;
   curOff += (1 + symDef.size()) * 16;
-  exe.addShdr(".strtab", SHT_STRTAB, 0, 0, curOff, strtabSize, SHN_UNDEF, 0, 1,
-              0);
+  exe.add_section_header(".strtab", SHT_STRTAB, 0, 0, curOff, strtabSize,
+                         SHN_UNDEF, 0, 1, 0);
   str = exe.strtab = new char[strtabSize];
   exe.strtabSize = strtabSize;
   index = 0;
@@ -308,8 +309,8 @@ void Linker::assemExe() {
   }
 }
 
-void Linker::exportElf(const char *dir) {
-  exe.writeElf(dir, 1);
+void Linker::export_elf(const char *dir) {
+  exe.write_elf(dir, 1);
   FILE *fp = fopen(dir, "a+");
   char pad[1] = {0};
   for (int i = 0; i < segNames.size(); ++i) {
@@ -333,18 +334,18 @@ void Linker::exportElf(const char *dir) {
     }
   }
   fclose(fp);
-  exe.writeElf(dir, 2);
+  exe.write_elf(dir, 2);
 }
 
 bool Linker::link(const char *dir) {
-  collectInfo();
-  if (!symValid())
+  collect_info();
+  if (!symbol_is_valid())
     return false;
-  allocAddr();
-  symParser();
+  alloc_addr();
+  symbol_parser();
   relocate();
-  assemExe();
-  exportElf(dir);
+  assemble_executable();
+  export_elf(dir);
   return true;
 }
 

@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
       desFileName = arg;
       break;
     }
-    linker.addElf(arg.c_str());
+    linker.add_elf(arg.c_str());
     i++;
   }
   linker.link(desFileName.c_str());

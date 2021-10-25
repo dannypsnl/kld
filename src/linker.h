@@ -51,14 +51,14 @@ public:
 
 public:
   Linker();
-  void addElf(const char *dir);
-  void collectInfo();
-  bool symValid();
-  void allocAddr();
-  void symParser();
+  void add_elf(const char *dir);
+  void collect_info();
+  bool symbol_is_valid();
+  void alloc_addr();
+  void symbol_parser();
   void relocate();
-  void assemExe();
-  void exportElf(const char *dir);
+  void assemble_executable();
+  void export_elf(const char *dir);
   bool link(const char *dir);
   ~Linker();
 };
