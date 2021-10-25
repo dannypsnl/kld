@@ -1,4 +1,5 @@
 #include "linker.h"
+#include <boost/algorithm/string/predicate.hpp>
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
@@ -11,7 +12,7 @@ int main(int argc, char *argv[]) {
   int i = 1;
   while (true) {
     string arg = argv[i];
-    if (arg.rfind(".o") != arg.length() - 2) {
+    if (!boost::algorithm::ends_with(arg, ".o")) {
       desFileName = arg;
       break;
     }
