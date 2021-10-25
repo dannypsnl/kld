@@ -76,9 +76,11 @@ struct Linker {
   vector<elfio *> elfs;
   vector<SymLink *> symLinks;
   vector<SymLink *> symDef;
+  elfio *startOwner;
 
   void allocAddr();
   void collectInfo();
+  bool symValid();
 };
 
 void Linker::allocAddr() {
@@ -123,6 +125,40 @@ void Linker::collectInfo() {
       }
     }
   }
+}
+
+#define START "@start"
+
+bool Linker::symValid() {
+  bool flag = true;
+  startOwner = nullptr;
+  for (int i = 0; i < symDef.size(); ++i) {
+    if (symDef[i]->name == START) {
+      startOwner = symDef[i]->prov;
+    }
+    for (int j = i + 1; j < symDef.size(); ++j) {
+      if (symDef[i]->name == symDef[j]->name) {
+        printf("symbol %s redefinition.\n", symDef[i]->name.c_str());
+      }
+    }
+  }
+  if (startOwner == nullptr) {
+    printf("can not find entrypoint symbol %s.\n", START);
+    flag = false;
+  }
+  for (int i = 0; i < symLinks.size(); ++i) {
+    for (int j = 0; j < symDef.size(); ++j) {
+      if (symLinks[i]->name == symDef[j]->name) {
+        symLinks[i]->prov = symDef[j]->prov;
+        break;
+      }
+    }
+    if (symLinks[i]->prov == nullptr) {
+      printf("undefined symbol %s.\n", symDef[i]->name.c_str());
+      flag = false;
+    }
+  }
+  return flag;
 }
 
 int main(int argc, char **argv) {
