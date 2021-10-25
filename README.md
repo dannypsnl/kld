@@ -2,8 +2,12 @@
 
 ### Build
 
-```
-xmake g --vcpkg=/path/to/vcpkg
-vcpkg install elfio
+```shell
 xmake
+```
+
+### Run
+
+```shell
+xmake run kld
 ```
