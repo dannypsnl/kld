@@ -8,7 +8,7 @@ Block::~Block() { delete[] data; }
 
 SegList::~SegList() {
   ownerList.clear();
-  for (int i = 0; i < blocks.size(); ++i) {
+  for (auto i = 0; i < blocks.size(); ++i) {
     delete blocks[i];
   }
   blocks.clear();
@@ -27,7 +27,7 @@ void SegList::allocAddr(string name, unsigned int &base, unsigned int &off) {
   baseAddr = base;
   offset = off;
   size = 0;
-  for (int i = 0; i < ownerList.size(); ++i) {
+  for (auto i = 0; i < ownerList.size(); ++i) {
     size += (DISC_ALIGN - size % DISC_ALIGN) % DISC_ALIGN;
     Elf32_Shdr *seg = ownerList[i]->shdrTab[name];
     if (name != ".bss") {
@@ -46,7 +46,7 @@ void SegList::allocAddr(string name, unsigned int &base, unsigned int &off) {
 void SegList::relocAddr(unsigned int relAddr, unsigned char type,
                         unsigned int symAddr) {
   unsigned int relOffset = relAddr - baseAddr;
-  for (int i = 0; i < blocks.size(); ++i) {
+  for (auto i = 0; i < blocks.size(); ++i) {
     if (blocks[i]->offset <= relOffset &&
         blocks[i]->offset + blocks[i]->size > relOffset) {
       auto b = blocks[i];
@@ -65,7 +65,7 @@ Linker::Linker() {
   segNames.push_back(".text");
   segNames.push_back(".data");
   segNames.push_back(".bss");
-  for (int i = 0; i < segNames.size(); ++i)
+  for (auto i = 0; i < segNames.size(); ++i)
     segLists[segNames[i]] = new SegList();
 }
 
@@ -76,9 +76,9 @@ void Linker::add_elf(const char *dir) {
 }
 
 void Linker::collect_info() {
-  for (int i = 0; i < elfs.size(); ++i) {
+  for (auto i = 0; i < elfs.size(); ++i) {
     Elf_file *elf = elfs[i];
-    for (int i = 0; i < segNames.size(); ++i)
+    for (auto i = 0; i < segNames.size(); ++i)
       if (elf->shdrTab.find(segNames[i]) != elf->shdrTab.end())
         segLists[segNames[i]]->ownerList.push_back(elf);
     for (map<string, Elf32_Sym *>::iterator symIt = elf->symTab.begin();
@@ -103,7 +103,7 @@ void Linker::collect_info() {
 bool Linker::symbol_is_valid() {
   bool flag = true;
   startOwner = NULL;
-  for (int i = 0; i < symDef.size(); ++i) {
+  for (auto i = 0; i < symDef.size(); ++i) {
     if (ELF32_ST_BIND(symDef[i]->prov->symTab[symDef[i]->name]->st_info) !=
         STB_GLOBAL) {
       continue;
@@ -111,7 +111,7 @@ bool Linker::symbol_is_valid() {
     if (symDef[i]->name == START) {
       startOwner = symDef[i]->prov;
     }
-    for (int j = i + 1; j < symDef.size(); ++j) {
+    for (auto j = i + 1; j < symDef.size(); ++j) {
       if (ELF32_ST_BIND(symDef[j]->prov->symTab[symDef[j]->name]->st_info) !=
           STB_GLOBAL) {
         continue;
@@ -128,8 +128,8 @@ bool Linker::symbol_is_valid() {
     printf("linker cannot find entry %s.\n", START);
     flag = false;
   }
-  for (int i = 0; i < symLinks.size(); ++i) {
-    for (int j = 0; j < symDef.size(); ++j) {
+  for (auto i = 0; i < symLinks.size(); ++i) {
+    for (auto j = 0; j < symDef.size(); ++j) {
       if (ELF32_ST_BIND(symDef[j]->prov->symTab[symDef[j]->name]->st_info) !=
           STB_GLOBAL)
         continue;
@@ -165,18 +165,18 @@ bool Linker::symbol_is_valid() {
 void Linker::alloc_addr() {
   unsigned int curAddr = BASE_ADDR;
   unsigned int curOff = 52 + 32 * segNames.size();
-  for (int i = 0; i < segNames.size(); ++i) {
+  for (auto i = 0; i < segNames.size(); ++i) {
     segLists[segNames[i]]->allocAddr(segNames[i], curAddr, curOff);
   }
 }
 
 void Linker::symbol_parser() {
-  for (int i = 0; i < symDef.size(); ++i) {
+  for (auto i = 0; i < symDef.size(); ++i) {
     Elf32_Sym *sym = symDef[i]->prov->symTab[symDef[i]->name];
     string segName = symDef[i]->prov->shdrNames[sym->st_shndx];
     sym->st_value = sym->st_value + symDef[i]->prov->shdrTab[segName]->sh_addr;
   }
-  for (int i = 0; i < symLinks.size(); ++i) {
+  for (auto i = 0; i < symLinks.size(); ++i) {
     Elf32_Sym *provsym = symLinks[i]->prov->symTab[symLinks[i]->name];
     Elf32_Sym *recvsym = symLinks[i]->recv->symTab[symLinks[i]->name];
     recvsym->st_value = provsym->st_value;
@@ -184,9 +184,9 @@ void Linker::symbol_parser() {
 }
 
 void Linker::relocate() {
-  for (int i = 0; i < elfs.size(); ++i) {
+  for (auto i = 0; i < elfs.size(); ++i) {
     vector<RelItem *> tab = elfs[i]->relTab;
-    for (int j = 0; j < tab.size(); ++j) {
+    for (auto j = 0; j < tab.size(); ++j) {
       Elf32_Sym *sym = elfs[i]->symTab[tab[j]->relName];
       unsigned int symAddr = sym->st_value;
       unsigned int relAddr =
@@ -215,7 +215,7 @@ void Linker::assemble_executable() {
   unsigned int curOff = 52 + 32 * segNames.size();
   exe.add_section_header("", 0, 0, 0, 0, 0, 0, 0, 0, 0);
   int shstrtabSize = 26;
-  for (int i = 0; i < segNames.size(); ++i) {
+  for (auto i = 0; i < segNames.size(); ++i) {
     string name = segNames[i];
     shstrtabSize += name.length() + 1;
 
@@ -263,7 +263,7 @@ void Linker::assemble_executable() {
   strcpy(str + index, ".strtab");
   index += 8;
   shstrIndex[""] = index - 1;
-  for (int i = 0; i < segNames.size(); ++i) {
+  for (auto i = 0; i < segNames.size(); ++i) {
     shstrIndex[segNames[i]] = index;
     strcpy(str + index, segNames[i].c_str());
     index += segNames[i].length() + 1;
@@ -281,7 +281,7 @@ void Linker::assemble_executable() {
   exe.shdrTab[".symtab"]->sh_link = exe.getSegIndex(".symtab") + 1;
   int strtabSize = 0;
   exe.add_symbol("", NULL);
-  for (int i = 0; i < symDef.size(); ++i) {
+  for (auto i = 0; i < symDef.size(); ++i) {
     string name = symDef[i]->name;
     strtabSize += name.length() + 1;
     Elf32_Sym *sym = symDef[i]->prov->symTab[name];
@@ -297,7 +297,7 @@ void Linker::assemble_executable() {
   index = 0;
   map<string, int> strIndex;
   strIndex[""] = strtabSize - 1;
-  for (int i = 0; i < symDef.size(); ++i) {
+  for (auto i = 0; i < symDef.size(); ++i) {
     strIndex[symDef[i]->name] = index;
     strcpy(str + index, symDef[i]->name.c_str());
     index += symDef[i]->name.length() + 1;
@@ -316,7 +316,7 @@ void Linker::export_elf(const char *dir) {
   exe.write_elf(dir, 1);
   FILE *fp = fopen(dir, "a+");
   char pad[1] = {0};
-  for (int i = 0; i < segNames.size(); ++i) {
+  for (auto i = 0; i < segNames.size(); ++i) {
     SegList *sl = segLists[segNames[i]];
     int padnum = sl->offset - sl->begin;
     while (padnum--)
@@ -324,7 +324,7 @@ void Linker::export_elf(const char *dir) {
     if (segNames[i] != ".bss") {
       Block *old = NULL;
       char instPad[1] = {(char)0x90};
-      for (int j = 0; j < sl->blocks.size(); ++j) {
+      for (auto j = 0; j < sl->blocks.size(); ++j) {
         Block *b = sl->blocks[j];
         if (old != NULL) {
           padnum = b->offset - (old->offset + old->size);
@@ -365,7 +365,7 @@ Linker::~Linker() {
     delete *i;
   }
   symDef.clear();
-  for (int i = 0; i < elfs.size(); ++i) {
+  for (auto i = 0; i < elfs.size(); ++i) {
     delete elfs[i];
   }
   elfs.clear();

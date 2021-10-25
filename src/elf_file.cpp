@@ -34,7 +34,7 @@ void Elf_file::read_elf(const char *dir) {
 
   if (ehdr.e_type == ET_EXEC) {
     fseek(fp, ehdr.e_phoff, 0);
-    for (int i = 0; i < ehdr.e_phnum; ++i) {
+    for (auto i = 0; i < ehdr.e_phnum; ++i) {
       Elf32_Phdr *phdr = new Elf32_Phdr();
       fread(phdr, ehdr.e_phentsize, 1, fp);
       phdrTab.push_back(phdr);
@@ -49,7 +49,7 @@ void Elf_file::read_elf(const char *dir) {
   fread(shstrTabData, shstrTab.sh_size, 1, fp);
 
   fseek(fp, ehdr.e_shoff, 0);
-  for (int i = 0; i < ehdr.e_shnum; ++i) {
+  for (auto i = 0; i < ehdr.e_shnum; ++i) {
     Elf32_Shdr *shdr = new Elf32_Shdr();
     fread(shdr, ehdr.e_shentsize, 1, fp);
     string name(shstrTabData + shdr->sh_name);
@@ -71,7 +71,7 @@ void Elf_file::read_elf(const char *dir) {
   fseek(fp, sh_symTab->sh_offset, 0);
   int symNum = sh_symTab->sh_size / 16;
   vector<Elf32_Sym *> symList;
-  for (int i = 0; i < symNum; ++i) {
+  for (auto i = 0; i < symNum; ++i) {
     Elf32_Sym *sym = new Elf32_Sym();
     fread(sym, 16, 1, fp);
     symList.push_back(sym);
@@ -103,7 +103,7 @@ void Elf_file::read_elf(const char *dir) {
 
 int Elf_file::getSegIndex(string segName) {
   int index = 0;
-  for (int i = 0; i < shdrNames.size(); ++i) {
+  for (auto i = 0; i < shdrNames.size(); ++i) {
     if (shdrNames[i] == segName)
       break;
     ++index;
@@ -113,7 +113,7 @@ int Elf_file::getSegIndex(string segName) {
 
 int Elf_file::getSymIndex(string symName) {
   int index = 0;
-  for (int i = 0; i < symNames.size(); ++i) {
+  for (auto i = 0; i < symNames.size(); ++i) {
     if (shdrNames[i] == symName)
       break;
     ++index;
@@ -183,18 +183,18 @@ void Elf_file::write_elf(const char *dir, int flag) {
     FILE *fp = fopen(dir, "w+");
     fwrite(&ehdr, ehdr.e_ehsize, 1, fp);
     if (!phdrTab.empty()) {
-      for (int i = 0; i < phdrTab.size(); ++i)
+      for (auto i = 0; i < phdrTab.size(); ++i)
         fwrite(phdrTab[i], ehdr.e_phentsize, 1, fp);
     }
     fclose(fp);
   } else if (flag == 2) {
     FILE *fp = fopen(dir, "a+");
     fwrite(shstrtab, shstrtabSize, 1, fp);
-    for (int i = 0; i < shdrNames.size(); ++i) {
+    for (auto i = 0; i < shdrNames.size(); ++i) {
       Elf32_Shdr *sh = shdrTab[shdrNames[i]];
       fwrite(sh, ehdr.e_shentsize, 1, fp);
     }
-    for (int i = 0; i < symNames.size(); ++i) {
+    for (auto i = 0; i < symNames.size(); ++i) {
       Elf32_Sym *sym = symTab[symNames[i]];
       fwrite(sym, sizeof(Elf32_Sym), 1, fp);
     }
