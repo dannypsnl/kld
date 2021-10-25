@@ -119,7 +119,7 @@ bool Linker::symValid() {
           STB_GLOBAL)
         continue;
       if (symDef[i]->name == symDef[j]->name) {
-        printf("符号名%s在文件%s和文件%s中发生链接冲突。\n",
+        printf("symbol %s in %s and %s are redefined.\n",
                symDef[i]->name.c_str(), symDef[i]->prov->elf_dir,
                symDef[j]->prov->elf_dir);
         flag = false;
@@ -127,7 +127,7 @@ bool Linker::symValid() {
     }
   }
   if (startOwner == NULL) {
-    printf("链接器找不到程序入口%s。\n", START);
+    printf("linker cannot find entry %s.\n", START);
     flag = false;
   }
   for (int i = 0; i < symLinks.size(); ++i) {
@@ -147,13 +147,14 @@ bool Linker::symValid() {
           symLinks[i]->recv->symTab[symLinks[i]->name]->st_info;
       string type;
       if (ELF32_ST_TYPE(info) == STT_OBJECT)
-        type = "变量";
+        type = "variable";
       else if (ELF32_ST_TYPE(info) == STT_FUNC)
-        type = "函数";
+        type = "function";
       else
-        type = "符号";
-      printf("文件%s的%s名%s未定义。\n", symLinks[i]->recv->elf_dir,
-             type.c_str(), symLinks[i]->name.c_str());
+        type = "symbol";
+      printf("in file %s type %s named %s is undefined.\n",
+             symLinks[i]->recv->elf_dir, type.c_str(),
+             symLinks[i]->name.c_str());
       if (flag)
         flag = false;
     }
@@ -164,9 +165,7 @@ bool Linker::symValid() {
 void Linker::allocAddr() {
   unsigned int curAddr = BASE_ADDR;
   unsigned int curOff = 52 + 32 * segNames.size();
-  for (int i = 0; i < segNames.size();
-       ++i) //按照类型分配地址，不紧邻.data与.bss段
-  {
+  for (int i = 0; i < segNames.size(); ++i) {
     segLists[segNames[i]]->allocAddr(segNames[i], curAddr, curOff);
   }
 }
