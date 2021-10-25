@@ -81,6 +81,7 @@ struct Linker {
   void allocAddr();
   void collectInfo();
   bool symValid();
+  void symParser();
 };
 
 void Linker::allocAddr() {
@@ -99,7 +100,7 @@ void Linker::collectInfo() {
         segLists[segNames[i]]->ownerList.push_back(elf);
       }
     }
-    section *sec;
+    section *sec = nullptr;
     symbol_section_accessor access{(const elfio &)elf, sec};
     for (int i = 0; i < access.get_symbols_num(); ++i) {
       string name;
@@ -159,6 +160,45 @@ bool Linker::symValid() {
     }
   }
   return flag;
+}
+
+void Linker::symParser() {
+  for (int i = 0; i < elfs.size(); ++i) {
+    auto elf = elfs[i];
+    section *sec = nullptr;
+    symbol_section_accessor access{(const elfio &)elf, sec};
+    for (int i = 0; i < access.get_symbols_num(); ++i) {
+      string name;
+      Elf64_Addr value;
+      Elf_Xword size;
+      unsigned char bind;
+      unsigned char type;
+      Elf_Half section_index;
+      unsigned char other;
+      access.get_symbol(i, name, value, size, bind, type, section_index, other);
+      if (section_index == STN_UNDEF) {
+        string segName = elf->sections[section_index]->get_name();
+        value += elf->sections[segName]->get_address();
+      }
+    }
+  }
+
+  for (int i = 0; i < symLinks.size(); ++i) {
+    string name = symLinks[i]->name;
+    section *sec = nullptr;
+    symbol_section_accessor access{(const elfio &)symLinks[i]->prov, sec};
+    Elf_Xword size;
+    unsigned char bind;
+    unsigned char type;
+    Elf_Half section_index;
+    unsigned char other;
+    Elf64_Addr provValue;
+    access.get_symbol(name, provValue, size, bind, type, section_index, other);
+    symbol_section_accessor access2{(const elfio &)symLinks[i]->recv, sec};
+    Elf64_Addr recvValue;
+    access2.get_symbol(name, recvValue, size, bind, type, section_index, other);
+    recvValue = provValue;
+  }
 }
 
 int main(int argc, char **argv) {
