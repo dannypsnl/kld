@@ -18,12 +18,12 @@ struct RelItem {
 class Elf_file {
 public:
   Elf32_Ehdr ehdr;
-  vector<Elf32_Phdr *> phdrTab;
-  map<string, Elf32_Shdr *> shdrTab;
-  vector<string> shdrNames;
-  map<string, Elf32_Sym *> symTab;
-  vector<string> symNames;
-  vector<RelItem *> relTab;
+  vector<Elf32_Phdr *> phdr_tab;
+  map<string, Elf32_Shdr *> shdr_tab;
+  vector<string> shdr_names;
+  map<string, Elf32_Sym *> sym_tab;
+  vector<string> sym_names;
+  vector<RelItem *> rel_tab;
   char *elf_dir;
   char *shstrtab;
   unsigned int shstrtabSize;

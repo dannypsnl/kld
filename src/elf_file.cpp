@@ -37,7 +37,7 @@ void Elf_file::read_elf(const char *dir) {
     for (auto i = 0; i < ehdr.e_phnum; ++i) {
       Elf32_Phdr *phdr = new Elf32_Phdr();
       fread(phdr, ehdr.e_phentsize, 1, fp);
-      phdrTab.push_back(phdr);
+      phdr_tab.push_back(phdr);
     }
   }
 
@@ -53,21 +53,21 @@ void Elf_file::read_elf(const char *dir) {
     Elf32_Shdr *shdr = new Elf32_Shdr();
     fread(shdr, ehdr.e_shentsize, 1, fp);
     string name(shstrTabData + shdr->sh_name);
-    shdrNames.push_back(name);
+    shdr_names.push_back(name);
     if (name.empty())
       delete shdr;
     else {
-      shdrTab[name] = shdr;
+      shdr_tab[name] = shdr;
     }
   }
   delete[] shstrTabData;
 
-  Elf32_Shdr *strTab = shdrTab[".strtab"];
+  Elf32_Shdr *strTab = shdr_tab[".strtab"];
   char *strTabData = new char[strTab->sh_size];
   fseek(fp, strTab->sh_offset, 0);
   fread(strTabData, strTab->sh_size, 1, fp);
 
-  Elf32_Shdr *sh_symTab = shdrTab[".symtab"];
+  Elf32_Shdr *sh_symTab = shdr_tab[".symtab"];
   fseek(fp, sh_symTab->sh_offset, 0);
   int symNum = sh_symTab->sh_size / 16;
   vector<Elf32_Sym *> symList;
@@ -79,20 +79,20 @@ void Elf_file::read_elf(const char *dir) {
     if (name.empty())
       delete sym;
     else {
-      symTab[name] = sym;
+      sym_tab[name] = sym;
     }
   }
-  for (map<string, Elf32_Shdr *>::iterator i = shdrTab.begin();
-       i != shdrTab.end(); ++i) {
+  for (map<string, Elf32_Shdr *>::iterator i = shdr_tab.begin();
+       i != shdr_tab.end(); ++i) {
     if (i->first.find(".rel") == 0) {
-      Elf32_Shdr *sh_relTab = shdrTab[i->first];
+      Elf32_Shdr *sh_relTab = shdr_tab[i->first];
       fseek(fp, sh_relTab->sh_offset, 0);
       int relNum = sh_relTab->sh_size / 8;
       for (int j = 0; j < relNum; ++j) {
         Elf32_Rel *rel = new Elf32_Rel();
         fread(rel, 8, 1, fp);
         string name(strTabData + symList[ELF32_R_SYM(rel->r_info)]->st_name);
-        relTab.push_back(new RelItem(i->first.substr(4), rel, name));
+        rel_tab.push_back(new RelItem(i->first.substr(4), rel, name));
       }
     }
   }
@@ -103,8 +103,8 @@ void Elf_file::read_elf(const char *dir) {
 
 int Elf_file::getSegIndex(string segName) {
   int index = 0;
-  for (auto i = 0; i < shdrNames.size(); ++i) {
-    if (shdrNames[i] == segName)
+  for (auto i = 0; i < shdr_names.size(); ++i) {
+    if (shdr_names[i] == segName)
       break;
     ++index;
   }
@@ -113,8 +113,8 @@ int Elf_file::getSegIndex(string segName) {
 
 int Elf_file::getSymIndex(string symName) {
   int index = 0;
-  for (auto i = 0; i < symNames.size(); ++i) {
-    if (shdrNames[i] == symName)
+  for (auto i = 0; i < sym_names.size(); ++i) {
+    if (shdr_names[i] == symName)
       break;
     ++index;
   }
@@ -133,7 +133,7 @@ void Elf_file::add_program_header(Elf32_Word type, Elf32_Off off,
   ph->p_memsz = memsz;
   ph->p_flags = flags;
   ph->p_align = align;
-  phdrTab.push_back(ph);
+  phdr_tab.push_back(ph);
 }
 
 void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
@@ -154,12 +154,12 @@ void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
   sh->sh_info = sh_info;
   sh->sh_addralign = sh_addralign;
   sh->sh_entsize = sh_entsize;
-  shdrTab[sh_name] = sh;
-  shdrNames.push_back(sh_name);
+  shdr_tab[sh_name] = sh;
+  shdr_names.push_back(sh_name);
 }
 
 void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
-  Elf32_Sym *sym = symTab[st_name] = new Elf32_Sym();
+  Elf32_Sym *sym = sym_tab[st_name] = new Elf32_Sym();
   if (st_name == "") {
     sym->st_name = 0;
     sym->st_value = 0;
@@ -175,27 +175,27 @@ void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
     sym->st_other = s->st_other;
     sym->st_shndx = s->st_shndx;
   }
-  symNames.push_back(st_name);
+  sym_names.push_back(st_name);
 }
 
 void Elf_file::write_elf(const char *dir, int flag) {
   if (flag == 1) {
     FILE *fp = fopen(dir, "w+");
     fwrite(&ehdr, ehdr.e_ehsize, 1, fp);
-    if (!phdrTab.empty()) {
-      for (auto i = 0; i < phdrTab.size(); ++i)
-        fwrite(phdrTab[i], ehdr.e_phentsize, 1, fp);
+    if (!phdr_tab.empty()) {
+      for (auto i = 0; i < phdr_tab.size(); ++i)
+        fwrite(phdr_tab[i], ehdr.e_phentsize, 1, fp);
     }
     fclose(fp);
   } else if (flag == 2) {
     FILE *fp = fopen(dir, "a+");
     fwrite(shstrtab, shstrtabSize, 1, fp);
-    for (auto i = 0; i < shdrNames.size(); ++i) {
-      Elf32_Shdr *sh = shdrTab[shdrNames[i]];
+    for (auto i = 0; i < shdr_names.size(); ++i) {
+      Elf32_Shdr *sh = shdr_tab[shdr_names[i]];
       fwrite(sh, ehdr.e_shentsize, 1, fp);
     }
-    for (auto i = 0; i < symNames.size(); ++i) {
-      Elf32_Sym *sym = symTab[symNames[i]];
+    for (auto i = 0; i < sym_names.size(); ++i) {
+      Elf32_Sym *sym = sym_tab[sym_names[i]];
       fwrite(sym, sizeof(Elf32_Sym), 1, fp);
     }
     fwrite(strtab, strtabSize, 1, fp);
@@ -204,26 +204,27 @@ void Elf_file::write_elf(const char *dir, int flag) {
 }
 
 Elf_file::~Elf_file() {
-  for (vector<Elf32_Phdr *>::iterator i = phdrTab.begin(); i != phdrTab.end();
+  for (vector<Elf32_Phdr *>::iterator i = phdr_tab.begin(); i != phdr_tab.end();
        ++i) {
     delete *i;
   }
-  phdrTab.clear();
-  for (map<string, Elf32_Shdr *>::iterator i = shdrTab.begin();
-       i != shdrTab.end(); ++i) {
+  phdr_tab.clear();
+  for (map<string, Elf32_Shdr *>::iterator i = shdr_tab.begin();
+       i != shdr_tab.end(); ++i) {
     delete i->second;
   }
-  shdrTab.clear();
-  shdrNames.clear();
-  for (map<string, Elf32_Sym *>::iterator i = symTab.begin(); i != symTab.end();
+  shdr_tab.clear();
+  shdr_names.clear();
+  for (map<string, Elf32_Sym *>::iterator i = sym_tab.begin();
+       i != sym_tab.end(); ++i) {
+    delete i->second;
+  }
+  sym_tab.clear();
+  for (vector<RelItem *>::iterator i = rel_tab.begin(); i != rel_tab.end();
        ++i) {
-    delete i->second;
-  }
-  symTab.clear();
-  for (vector<RelItem *>::iterator i = relTab.begin(); i != relTab.end(); ++i) {
     delete *i;
   }
-  relTab.clear();
+  rel_tab.clear();
   if (shstrtab != NULL)
     delete[] shstrtab;
   if (strtab != NULL)

@@ -29,7 +29,7 @@ void SegList::allocAddr(string name, unsigned int &base, unsigned int &off) {
   size = 0;
   for (auto i = 0; i < ownerList.size(); ++i) {
     size += (DISC_ALIGN - size % DISC_ALIGN) % DISC_ALIGN;
-    Elf32_Shdr *seg = ownerList[i]->shdrTab[name];
+    Elf32_Shdr *seg = ownerList[i]->shdr_tab[name];
     if (name != ".bss") {
       char *buf = new char[seg->sh_size];
       ownerList[i]->get_data(buf, seg->sh_offset, seg->sh_size);
@@ -79,10 +79,10 @@ void Linker::collect_info() {
   for (auto i = 0; i < elfs.size(); ++i) {
     Elf_file *elf = elfs[i];
     for (auto i = 0; i < segNames.size(); ++i)
-      if (elf->shdrTab.find(segNames[i]) != elf->shdrTab.end())
+      if (elf->shdr_tab.find(segNames[i]) != elf->shdr_tab.end())
         segLists[segNames[i]]->ownerList.push_back(elf);
-    for (map<string, Elf32_Sym *>::iterator symIt = elf->symTab.begin();
-         symIt != elf->symTab.end(); ++symIt) {
+    for (map<string, Elf32_Sym *>::iterator symIt = elf->sym_tab.begin();
+         symIt != elf->sym_tab.end(); ++symIt) {
       {
         SymLink *symLink = new SymLink();
         symLink->name = symIt->first;
@@ -104,7 +104,7 @@ bool Linker::symbol_is_valid() {
   bool flag = true;
   startOwner = NULL;
   for (auto i = 0; i < symDef.size(); ++i) {
-    if (ELF32_ST_BIND(symDef[i]->prov->symTab[symDef[i]->name]->st_info) !=
+    if (ELF32_ST_BIND(symDef[i]->prov->sym_tab[symDef[i]->name]->st_info) !=
         STB_GLOBAL) {
       continue;
     }
@@ -112,7 +112,7 @@ bool Linker::symbol_is_valid() {
       startOwner = symDef[i]->prov;
     }
     for (auto j = i + 1; j < symDef.size(); ++j) {
-      if (ELF32_ST_BIND(symDef[j]->prov->symTab[symDef[j]->name]->st_info) !=
+      if (ELF32_ST_BIND(symDef[j]->prov->sym_tab[symDef[j]->name]->st_info) !=
           STB_GLOBAL) {
         continue;
       }
@@ -130,7 +130,7 @@ bool Linker::symbol_is_valid() {
   }
   for (auto i = 0; i < symLinks.size(); ++i) {
     for (auto j = 0; j < symDef.size(); ++j) {
-      if (ELF32_ST_BIND(symDef[j]->prov->symTab[symDef[j]->name]->st_info) !=
+      if (ELF32_ST_BIND(symDef[j]->prov->sym_tab[symDef[j]->name]->st_info) !=
           STB_GLOBAL)
         continue;
       if (symLinks[i]->name == symDef[j]->name
@@ -142,7 +142,7 @@ bool Linker::symbol_is_valid() {
     }
     if (symLinks[i]->prov == NULL) {
       unsigned char info =
-          symLinks[i]->recv->symTab[symLinks[i]->name]->st_info;
+          symLinks[i]->recv->sym_tab[symLinks[i]->name]->st_info;
       string type;
       if (ELF32_ST_TYPE(info) == STT_OBJECT) {
         type = "variable";
@@ -172,25 +172,25 @@ void Linker::alloc_addr() {
 
 void Linker::symbol_parser() {
   for (auto i = 0; i < symDef.size(); ++i) {
-    Elf32_Sym *sym = symDef[i]->prov->symTab[symDef[i]->name];
-    string segName = symDef[i]->prov->shdrNames[sym->st_shndx];
-    sym->st_value = sym->st_value + symDef[i]->prov->shdrTab[segName]->sh_addr;
+    Elf32_Sym *sym = symDef[i]->prov->sym_tab[symDef[i]->name];
+    string segName = symDef[i]->prov->shdr_names[sym->st_shndx];
+    sym->st_value = sym->st_value + symDef[i]->prov->shdr_tab[segName]->sh_addr;
   }
   for (auto i = 0; i < symLinks.size(); ++i) {
-    Elf32_Sym *provsym = symLinks[i]->prov->symTab[symLinks[i]->name];
-    Elf32_Sym *recvsym = symLinks[i]->recv->symTab[symLinks[i]->name];
+    Elf32_Sym *provsym = symLinks[i]->prov->sym_tab[symLinks[i]->name];
+    Elf32_Sym *recvsym = symLinks[i]->recv->sym_tab[symLinks[i]->name];
     recvsym->st_value = provsym->st_value;
   }
 }
 
 void Linker::relocate() {
   for (auto i = 0; i < elfs.size(); ++i) {
-    vector<RelItem *> tab = elfs[i]->relTab;
+    vector<RelItem *> tab = elfs[i]->rel_tab;
     for (auto j = 0; j < tab.size(); ++j) {
-      Elf32_Sym *sym = elfs[i]->symTab[tab[j]->relName];
+      Elf32_Sym *sym = elfs[i]->sym_tab[tab[j]->relName];
       unsigned int symAddr = sym->st_value;
       unsigned int relAddr =
-          elfs[i]->shdrTab[tab[j]->segName]->sh_addr + tab[j]->rel->r_offset;
+          elfs[i]->shdr_tab[tab[j]->segName]->sh_addr + tab[j]->rel->r_offset;
 
       segLists[tab[j]->segName]->relocAddr(
           relAddr, ELF32_R_TYPE(tab[j]->rel->r_info), symAddr);
@@ -278,17 +278,17 @@ void Linker::assemble_executable() {
   curOff += 40 * (4 + segNames.size());
   exe.add_section_header(".symtab", SHT_SYMTAB, 0, 0, curOff,
                          (1 + symDef.size()) * 16, 0, 0, 1, 16);
-  exe.shdrTab[".symtab"]->sh_link = exe.getSegIndex(".symtab") + 1;
+  exe.shdr_tab[".symtab"]->sh_link = exe.getSegIndex(".symtab") + 1;
   int strtabSize = 0;
   exe.add_symbol("", NULL);
   for (auto i = 0; i < symDef.size(); ++i) {
     string name = symDef[i]->name;
     strtabSize += name.length() + 1;
-    Elf32_Sym *sym = symDef[i]->prov->symTab[name];
-    sym->st_shndx = exe.getSegIndex(symDef[i]->prov->shdrNames[sym->st_shndx]);
+    Elf32_Sym *sym = symDef[i]->prov->sym_tab[name];
+    sym->st_shndx = exe.getSegIndex(symDef[i]->prov->shdr_names[sym->st_shndx]);
     exe.add_symbol(name, sym);
   }
-  exe.ehdr.e_entry = exe.symTab[START]->st_value;
+  exe.ehdr.e_entry = exe.sym_tab[START]->st_value;
   curOff += (1 + symDef.size()) * 16;
   exe.add_section_header(".strtab", SHT_STRTAB, 0, 0, curOff, strtabSize,
                          SHN_UNDEF, 0, 1, 0);
@@ -302,12 +302,12 @@ void Linker::assemble_executable() {
     strcpy(str + index, symDef[i]->name.c_str());
     index += symDef[i]->name.length() + 1;
   }
-  for (map<string, Elf32_Sym *>::iterator i = exe.symTab.begin();
-       i != exe.symTab.end(); ++i) {
+  for (map<string, Elf32_Sym *>::iterator i = exe.sym_tab.begin();
+       i != exe.sym_tab.end(); ++i) {
     i->second->st_name = strIndex[i->first];
   }
-  for (map<string, Elf32_Shdr *>::iterator i = exe.shdrTab.begin();
-       i != exe.shdrTab.end(); ++i) {
+  for (map<string, Elf32_Shdr *>::iterator i = exe.shdr_tab.begin();
+       i != exe.shdr_tab.end(); ++i) {
     i->second->sh_name = shstrIndex[i->first];
   }
 }
