@@ -95,7 +95,8 @@ void Elf_file::read_elf(const char *dir) {
         Elf32_Rel *rel = new Elf32_Rel();
         fread(rel, 8, 1, fp);
         string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)]->st_name);
-        rel_table.push_back(new RelocationItem(i->first.substr(4), rel, name));
+        relocation_table.push_back(
+            new RelocationItem(i->first.substr(4), rel, name));
       }
     }
   }
@@ -222,10 +223,10 @@ Elf_file::~Elf_file() {
     delete i->second;
   }
   symbol_table.clear();
-  for (auto i = rel_table.begin(); i != rel_table.end(); ++i) {
+  for (auto i = relocation_table.begin(); i != relocation_table.end(); ++i) {
     delete *i;
   }
-  rel_table.clear();
+  relocation_table.clear();
   if (shstrtab != NULL)
     delete[] shstrtab;
   if (strtab != NULL)
