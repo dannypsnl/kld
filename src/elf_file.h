@@ -7,23 +7,23 @@
 
 using namespace std;
 
-struct RelItem {
+struct RelocationItem {
   string seg_name;
-  Elf32_Rel *rel;
+  Elf32_Rel *relocation;
   string rel_name;
-  RelItem(string sname, Elf32_Rel *r, string rname);
-  ~RelItem();
+  RelocationItem(string sname, Elf32_Rel *r, string rname);
+  ~RelocationItem();
 };
 
 class Elf_file {
 public:
-  Elf32_Ehdr ehdr;
-  vector<Elf32_Phdr *> phdr_tab;
-  map<string, Elf32_Shdr *> shdr_tab;
+  Elf32_Ehdr elf_file_header;
+  vector<Elf32_Phdr *> program_header_table;
+  map<string, Elf32_Shdr *> section_header_table;
   vector<string> shdr_names;
-  map<string, Elf32_Sym *> sym_tab;
+  map<string, Elf32_Sym *> symbol_table;
   vector<string> sym_names;
-  vector<RelItem *> rel_tab;
+  vector<RelocationItem *> rel_table;
   char *elf_dir;
   char *shstrtab;
   unsigned int shstrtab_size;

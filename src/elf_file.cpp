@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 
-RelItem::RelItem(string sname, Elf32_Rel *r, string rname) {
+RelocationItem::RelocationItem(string sname, Elf32_Rel *r, string rname) {
   seg_name = sname;
-  rel = r;
+  relocation = r;
   rel_name = rname;
 }
 
-RelItem::~RelItem() { delete rel; }
+RelocationItem::~RelocationItem() { delete relocation; }
 
 void Elf_file::get_data(char *buf, Elf32_Off offset, Elf32_Word size) {
   FILE *fp = fopen(elf_dir, "rb");
@@ -30,44 +30,47 @@ void Elf_file::read_elf(const char *dir) {
   strcpy(elf_dir, dir);
   FILE *fp = fopen(dir, "rb");
   rewind(fp);
-  fread(&ehdr, sizeof(Elf32_Ehdr), 1, fp);
+  fread(&elf_file_header, sizeof(Elf32_Ehdr), 1, fp);
 
-  if (ehdr.e_type == ET_EXEC) {
-    fseek(fp, ehdr.e_phoff, 0);
-    for (auto i = 0; i < ehdr.e_phnum; ++i) {
+  if (elf_file_header.e_type == ET_EXEC) {
+    fseek(fp, elf_file_header.e_phoff, 0);
+    for (auto i = 0; i < elf_file_header.e_phnum; ++i) {
       Elf32_Phdr *phdr = new Elf32_Phdr();
-      fread(phdr, ehdr.e_phentsize, 1, fp);
-      phdr_tab.push_back(phdr);
+      fread(phdr, elf_file_header.e_phentsize, 1, fp);
+      program_header_table.push_back(phdr);
     }
   }
 
-  fseek(fp, ehdr.e_shoff + ehdr.e_shentsize * ehdr.e_shstrndx, 0);
+  fseek(fp,
+        elf_file_header.e_shoff +
+            elf_file_header.e_shentsize * elf_file_header.e_shstrndx,
+        0);
   Elf32_Shdr shstr_tab;
-  fread(&shstr_tab, ehdr.e_shentsize, 1, fp);
+  fread(&shstr_tab, elf_file_header.e_shentsize, 1, fp);
   char *shstr_tab_data = new char[shstr_tab.sh_size];
   fseek(fp, shstr_tab.sh_offset, 0);
   fread(shstr_tab_data, shstr_tab.sh_size, 1, fp);
 
-  fseek(fp, ehdr.e_shoff, 0);
-  for (auto i = 0; i < ehdr.e_shnum; ++i) {
+  fseek(fp, elf_file_header.e_shoff, 0);
+  for (auto i = 0; i < elf_file_header.e_shnum; ++i) {
     Elf32_Shdr *shdr = new Elf32_Shdr();
-    fread(shdr, ehdr.e_shentsize, 1, fp);
+    fread(shdr, elf_file_header.e_shentsize, 1, fp);
     string name(shstr_tab_data + shdr->sh_name);
     shdr_names.push_back(name);
     if (name.empty())
       delete shdr;
     else {
-      shdr_tab[name] = shdr;
+      section_header_table[name] = shdr;
     }
   }
   delete[] shstr_tab_data;
 
-  Elf32_Shdr *str_tab = shdr_tab[".strtab"];
+  Elf32_Shdr *str_tab = section_header_table[".strtab"];
   char *str_tab_data = new char[str_tab->sh_size];
   fseek(fp, str_tab->sh_offset, 0);
   fread(str_tab_data, str_tab->sh_size, 1, fp);
 
-  Elf32_Shdr *sh_symbol_tab = shdr_tab[".symtab"];
+  Elf32_Shdr *sh_symbol_tab = section_header_table[".symtab"];
   fseek(fp, sh_symbol_tab->sh_offset, 0);
   int symNum = sh_symbol_tab->sh_size / 16;
   vector<Elf32_Sym *> sym_list;
@@ -79,19 +82,20 @@ void Elf_file::read_elf(const char *dir) {
     if (name.empty())
       delete sym;
     else {
-      sym_tab[name] = sym;
+      symbol_table[name] = sym;
     }
   }
-  for (auto i = shdr_tab.begin(); i != shdr_tab.end(); ++i) {
+  for (auto i = section_header_table.begin(); i != section_header_table.end();
+       ++i) {
     if (i->first.find(".rel") == 0) {
-      Elf32_Shdr *sh_rel_tab = shdr_tab[i->first];
+      Elf32_Shdr *sh_rel_tab = section_header_table[i->first];
       fseek(fp, sh_rel_tab->sh_offset, 0);
       int relNum = sh_rel_tab->sh_size / 8;
       for (int j = 0; j < relNum; ++j) {
         Elf32_Rel *rel = new Elf32_Rel();
         fread(rel, 8, 1, fp);
         string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)]->st_name);
-        rel_tab.push_back(new RelItem(i->first.substr(4), rel, name));
+        rel_table.push_back(new RelocationItem(i->first.substr(4), rel, name));
       }
     }
   }
@@ -132,7 +136,7 @@ void Elf_file::add_program_header(Elf32_Word type, Elf32_Off off,
   ph->p_memsz = memsz;
   ph->p_flags = flags;
   ph->p_align = align;
-  phdr_tab.push_back(ph);
+  program_header_table.push_back(ph);
 }
 
 void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
@@ -153,12 +157,12 @@ void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
   sh->sh_info = sh_info;
   sh->sh_addralign = sh_addralign;
   sh->sh_entsize = sh_entsize;
-  shdr_tab[sh_name] = sh;
+  section_header_table[sh_name] = sh;
   shdr_names.push_back(sh_name);
 }
 
 void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
-  Elf32_Sym *sym = sym_tab[st_name] = new Elf32_Sym();
+  Elf32_Sym *sym = symbol_table[st_name] = new Elf32_Sym();
   if (st_name == "") {
     sym->st_name = 0;
     sym->st_value = 0;
@@ -180,21 +184,21 @@ void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
 void Elf_file::write_elf(const char *dir, int flag) {
   if (flag == 1) {
     FILE *fp = fopen(dir, "w+");
-    fwrite(&ehdr, ehdr.e_ehsize, 1, fp);
-    if (!phdr_tab.empty()) {
-      for (auto i = 0; i < phdr_tab.size(); ++i)
-        fwrite(phdr_tab[i], ehdr.e_phentsize, 1, fp);
+    fwrite(&elf_file_header, elf_file_header.e_ehsize, 1, fp);
+    if (!program_header_table.empty()) {
+      for (auto i = 0; i < program_header_table.size(); ++i)
+        fwrite(program_header_table[i], elf_file_header.e_phentsize, 1, fp);
     }
     fclose(fp);
   } else if (flag == 2) {
     FILE *fp = fopen(dir, "a+");
     fwrite(shstrtab, shstrtab_size, 1, fp);
     for (auto i = 0; i < shdr_names.size(); ++i) {
-      Elf32_Shdr *sh = shdr_tab[shdr_names[i]];
-      fwrite(sh, ehdr.e_shentsize, 1, fp);
+      Elf32_Shdr *sh = section_header_table[shdr_names[i]];
+      fwrite(sh, elf_file_header.e_shentsize, 1, fp);
     }
     for (auto i = 0; i < sym_names.size(); ++i) {
-      Elf32_Sym *sym = sym_tab[sym_names[i]];
+      Elf32_Sym *sym = symbol_table[sym_names[i]];
       fwrite(sym, sizeof(Elf32_Sym), 1, fp);
     }
     fwrite(strtab, strtab_size, 1, fp);
@@ -203,23 +207,25 @@ void Elf_file::write_elf(const char *dir, int flag) {
 }
 
 Elf_file::~Elf_file() {
-  for (auto i = phdr_tab.begin(); i != phdr_tab.end(); ++i) {
+  for (auto i = program_header_table.begin(); i != program_header_table.end();
+       ++i) {
     delete *i;
   }
-  phdr_tab.clear();
-  for (auto i = shdr_tab.begin(); i != shdr_tab.end(); ++i) {
+  program_header_table.clear();
+  for (auto i = section_header_table.begin(); i != section_header_table.end();
+       ++i) {
     delete i->second;
   }
-  shdr_tab.clear();
+  section_header_table.clear();
   shdr_names.clear();
-  for (auto i = sym_tab.begin(); i != sym_tab.end(); ++i) {
+  for (auto i = symbol_table.begin(); i != symbol_table.end(); ++i) {
     delete i->second;
   }
-  sym_tab.clear();
-  for (auto i = rel_tab.begin(); i != rel_tab.end(); ++i) {
+  symbol_table.clear();
+  for (auto i = rel_table.begin(); i != rel_table.end(); ++i) {
     delete *i;
   }
-  rel_tab.clear();
+  rel_table.clear();
   if (shstrtab != NULL)
     delete[] shstrtab;
   if (strtab != NULL)
