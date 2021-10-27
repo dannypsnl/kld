@@ -81,8 +81,8 @@ void Linker::collect_info() {
     for (auto i = 0; i < seg_names.size(); ++i)
       if (elf->shdr_tab.find(seg_names[i]) != elf->shdr_tab.end())
         seg_lists[seg_names[i]]->owner_list.push_back(elf);
-    for (map<string, Elf32_Sym *>::iterator symIt = elf->sym_tab.begin();
-         symIt != elf->sym_tab.end(); ++symIt) {
+    for (auto symIt = elf->sym_tab.begin(); symIt != elf->sym_tab.end();
+         ++symIt) {
       {
         SymLink *symLink = new SymLink();
         symLink->name = symIt->first;
@@ -307,12 +307,10 @@ void Linker::assemble_executable() {
     strcpy(str + index, symbol_def[i]->name.c_str());
     index += symbol_def[i]->name.length() + 1;
   }
-  for (map<string, Elf32_Sym *>::iterator i = exe.sym_tab.begin();
-       i != exe.sym_tab.end(); ++i) {
+  for (auto i = exe.sym_tab.begin(); i != exe.sym_tab.end(); ++i) {
     i->second->st_name = strIndex[i->first];
   }
-  for (map<string, Elf32_Shdr *>::iterator i = exe.shdr_tab.begin();
-       i != exe.shdr_tab.end(); ++i) {
+  for (auto i = exe.shdr_tab.begin(); i != exe.shdr_tab.end(); ++i) {
     i->second->sh_name = shstrIndex[i->first];
   }
 }

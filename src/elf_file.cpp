@@ -82,8 +82,7 @@ void Elf_file::read_elf(const char *dir) {
       sym_tab[name] = sym;
     }
   }
-  for (map<string, Elf32_Shdr *>::iterator i = shdr_tab.begin();
-       i != shdr_tab.end(); ++i) {
+  for (auto i = shdr_tab.begin(); i != shdr_tab.end(); ++i) {
     if (i->first.find(".rel") == 0) {
       Elf32_Shdr *sh_relTab = shdr_tab[i->first];
       fseek(fp, sh_relTab->sh_offset, 0);
@@ -204,24 +203,20 @@ void Elf_file::write_elf(const char *dir, int flag) {
 }
 
 Elf_file::~Elf_file() {
-  for (vector<Elf32_Phdr *>::iterator i = phdr_tab.begin(); i != phdr_tab.end();
-       ++i) {
+  for (auto i = phdr_tab.begin(); i != phdr_tab.end(); ++i) {
     delete *i;
   }
   phdr_tab.clear();
-  for (map<string, Elf32_Shdr *>::iterator i = shdr_tab.begin();
-       i != shdr_tab.end(); ++i) {
+  for (auto i = shdr_tab.begin(); i != shdr_tab.end(); ++i) {
     delete i->second;
   }
   shdr_tab.clear();
   shdr_names.clear();
-  for (map<string, Elf32_Sym *>::iterator i = sym_tab.begin();
-       i != sym_tab.end(); ++i) {
+  for (auto i = sym_tab.begin(); i != sym_tab.end(); ++i) {
     delete i->second;
   }
   sym_tab.clear();
-  for (vector<RelItem *>::iterator i = rel_tab.begin(); i != rel_tab.end();
-       ++i) {
+  for (auto i = rel_tab.begin(); i != rel_tab.end(); ++i) {
     delete *i;
   }
   rel_tab.clear();
