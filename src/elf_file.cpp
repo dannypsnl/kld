@@ -42,17 +42,17 @@ void Elf_file::read_elf(const char *dir) {
   }
 
   fseek(fp, ehdr.e_shoff + ehdr.e_shentsize * ehdr.e_shstrndx, 0);
-  Elf32_Shdr shstrTab;
-  fread(&shstrTab, ehdr.e_shentsize, 1, fp);
-  char *shstrTabData = new char[shstrTab.sh_size];
-  fseek(fp, shstrTab.sh_offset, 0);
-  fread(shstrTabData, shstrTab.sh_size, 1, fp);
+  Elf32_Shdr shstr_tab;
+  fread(&shstr_tab, ehdr.e_shentsize, 1, fp);
+  char *shstr_tab_data = new char[shstr_tab.sh_size];
+  fseek(fp, shstr_tab.sh_offset, 0);
+  fread(shstr_tab_data, shstr_tab.sh_size, 1, fp);
 
   fseek(fp, ehdr.e_shoff, 0);
   for (auto i = 0; i < ehdr.e_shnum; ++i) {
     Elf32_Shdr *shdr = new Elf32_Shdr();
     fread(shdr, ehdr.e_shentsize, 1, fp);
-    string name(shstrTabData + shdr->sh_name);
+    string name(shstr_tab_data + shdr->sh_name);
     shdr_names.push_back(name);
     if (name.empty())
       delete shdr;
@@ -60,22 +60,22 @@ void Elf_file::read_elf(const char *dir) {
       shdr_tab[name] = shdr;
     }
   }
-  delete[] shstrTabData;
+  delete[] shstr_tab_data;
 
-  Elf32_Shdr *strTab = shdr_tab[".strtab"];
-  char *strTabData = new char[strTab->sh_size];
-  fseek(fp, strTab->sh_offset, 0);
-  fread(strTabData, strTab->sh_size, 1, fp);
+  Elf32_Shdr *str_tab = shdr_tab[".strtab"];
+  char *str_tab_data = new char[str_tab->sh_size];
+  fseek(fp, str_tab->sh_offset, 0);
+  fread(str_tab_data, str_tab->sh_size, 1, fp);
 
-  Elf32_Shdr *sh_symTab = shdr_tab[".symtab"];
-  fseek(fp, sh_symTab->sh_offset, 0);
-  int symNum = sh_symTab->sh_size / 16;
-  vector<Elf32_Sym *> symList;
+  Elf32_Shdr *sh_symbol_tab = shdr_tab[".symtab"];
+  fseek(fp, sh_symbol_tab->sh_offset, 0);
+  int symNum = sh_symbol_tab->sh_size / 16;
+  vector<Elf32_Sym *> sym_list;
   for (auto i = 0; i < symNum; ++i) {
     Elf32_Sym *sym = new Elf32_Sym();
     fread(sym, 16, 1, fp);
-    symList.push_back(sym);
-    string name(strTabData + sym->st_name);
+    sym_list.push_back(sym);
+    string name(str_tab_data + sym->st_name);
     if (name.empty())
       delete sym;
     else {
@@ -84,36 +84,36 @@ void Elf_file::read_elf(const char *dir) {
   }
   for (auto i = shdr_tab.begin(); i != shdr_tab.end(); ++i) {
     if (i->first.find(".rel") == 0) {
-      Elf32_Shdr *sh_relTab = shdr_tab[i->first];
-      fseek(fp, sh_relTab->sh_offset, 0);
-      int relNum = sh_relTab->sh_size / 8;
+      Elf32_Shdr *sh_rel_tab = shdr_tab[i->first];
+      fseek(fp, sh_rel_tab->sh_offset, 0);
+      int relNum = sh_rel_tab->sh_size / 8;
       for (int j = 0; j < relNum; ++j) {
         Elf32_Rel *rel = new Elf32_Rel();
         fread(rel, 8, 1, fp);
-        string name(strTabData + symList[ELF32_R_SYM(rel->r_info)]->st_name);
+        string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)]->st_name);
         rel_tab.push_back(new RelItem(i->first.substr(4), rel, name));
       }
     }
   }
-  delete[] strTabData;
+  delete[] str_tab_data;
 
   fclose(fp);
 }
 
-int Elf_file::get_seg_index(string segName) {
+int Elf_file::get_seg_index(string seg_name) {
   int index = 0;
   for (auto i = 0; i < shdr_names.size(); ++i) {
-    if (shdr_names[i] == segName)
+    if (shdr_names[i] == seg_name)
       break;
     ++index;
   }
   return index;
 }
 
-int Elf_file::get_symbol_index(string symName) {
+int Elf_file::get_symbol_index(string symbol_name) {
   int index = 0;
   for (auto i = 0; i < sym_names.size(); ++i) {
-    if (shdr_names[i] == symName)
+    if (shdr_names[i] == symbol_name)
       break;
     ++index;
   }

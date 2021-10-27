@@ -43,18 +43,18 @@ void SegList::alloc_addr(string name, unsigned int &base, unsigned int &off) {
     off += size;
 }
 
-void SegList::reloc_addr(unsigned int relAddr, unsigned char type,
-                         unsigned int symAddr) {
-  unsigned int relOffset = relAddr - base_addr;
+void SegList::reloc_addr(unsigned int rel_addr, unsigned char type,
+                         unsigned int sym_addr) {
+  unsigned int relOffset = rel_addr - base_addr;
   for (auto i = 0; i < blocks.size(); ++i) {
     if (blocks[i]->offset <= relOffset &&
         blocks[i]->offset + blocks[i]->size > relOffset) {
       auto b = blocks[i];
       int *pAddr = (int *)(b->data + relOffset - b->offset);
       if (type == R_386_32) {
-        *pAddr = symAddr;
+        *pAddr = sym_addr;
       } else if (type == R_386_PC32) {
-        *pAddr = symAddr - relAddr + *pAddr;
+        *pAddr = sym_addr - rel_addr + *pAddr;
       }
       return;
     }
@@ -176,9 +176,9 @@ void Linker::alloc_addr() {
 void Linker::symbol_parser() {
   for (auto i = 0; i < symbol_def.size(); ++i) {
     Elf32_Sym *sym = symbol_def[i]->prov->sym_tab[symbol_def[i]->name];
-    string segName = symbol_def[i]->prov->shdr_names[sym->st_shndx];
+    string seg_name = symbol_def[i]->prov->shdr_names[sym->st_shndx];
     sym->st_value =
-        sym->st_value + symbol_def[i]->prov->shdr_tab[segName]->sh_addr;
+        sym->st_value + symbol_def[i]->prov->shdr_tab[seg_name]->sh_addr;
   }
   for (auto i = 0; i < symbol_links.size(); ++i) {
     Elf32_Sym *provsym = symbol_links[i]->prov->sym_tab[symbol_links[i]->name];
@@ -216,7 +216,7 @@ void Linker::assemble_executable() {
   exe.ehdr.e_version = EV_CURRENT;
   exe.ehdr.e_flags = 0;
   exe.ehdr.e_ehsize = 52;
-  unsigned int curOff = 52 + 32 * seg_names.size();
+  unsigned int cur_off = 52 + 32 * seg_names.size();
   exe.add_section_header("", 0, 0, 0, 0, 0, 0, 0, 0, 0);
   int shstrtabSize = 26;
   for (auto i = 0; i < seg_names.size(); ++i) {
@@ -234,7 +234,7 @@ void Linker::assemble_executable() {
     exe.add_program_header(PT_LOAD, seg_lists[name]->offset,
                            seg_lists[name]->base_addr, filesz,
                            seg_lists[name]->size, flags, MEM_ALIGN);
-    curOff = seg_lists[name]->offset;
+    cur_off = seg_lists[name]->offset;
 
     Elf32_Word sh_type = SHT_PROGBITS;
     Elf32_Word sh_flags = SHF_ALLOC | SHF_WRITE;
@@ -256,62 +256,62 @@ void Linker::assemble_executable() {
   char *str = exe.shstrtab = new char[shstrtabSize];
   exe.shstrtab_size = shstrtabSize;
   int index = 0;
-  map<string, int> shstrIndex{};
-  shstrIndex[".shstrtab"] = index;
+  map<string, int> shstr_index{};
+  shstr_index[".shstrtab"] = index;
   strcpy(str + index, ".shstrtab");
   index += 10;
-  shstrIndex[".symtab"] = index;
+  shstr_index[".symtab"] = index;
   strcpy(str + index, ".symtab");
   index += 8;
-  shstrIndex[".strtab"] = index;
+  shstr_index[".strtab"] = index;
   strcpy(str + index, ".strtab");
   index += 8;
-  shstrIndex[""] = index - 1;
+  shstr_index[""] = index - 1;
   for (auto i = 0; i < seg_names.size(); ++i) {
-    shstrIndex[seg_names[i]] = index;
+    shstr_index[seg_names[i]] = index;
     strcpy(str + index, seg_names[i].c_str());
     index += seg_names[i].length() + 1;
   }
-  exe.add_section_header(".shstrtab", SHT_STRTAB, 0, 0, curOff, shstrtabSize,
+  exe.add_section_header(".shstrtab", SHT_STRTAB, 0, 0, cur_off, shstrtabSize,
                          SHN_UNDEF, 0, 1, 0);
   exe.ehdr.e_shstrndx = exe.get_seg_index(".shstrtab");
-  curOff += shstrtabSize;
-  exe.ehdr.e_shoff = curOff;
+  cur_off += shstrtabSize;
+  exe.ehdr.e_shoff = cur_off;
   exe.ehdr.e_shentsize = 40;
   exe.ehdr.e_shnum = 4 + seg_names.size();
-  curOff += 40 * (4 + seg_names.size());
-  exe.add_section_header(".symtab", SHT_SYMTAB, 0, 0, curOff,
+  cur_off += 40 * (4 + seg_names.size());
+  exe.add_section_header(".symtab", SHT_SYMTAB, 0, 0, cur_off,
                          (1 + symbol_def.size()) * 16, 0, 0, 1, 16);
   exe.shdr_tab[".symtab"]->sh_link = exe.get_seg_index(".symtab") + 1;
-  int strtabSize = 0;
+  int strtab_size = 0;
   exe.add_symbol("", NULL);
   for (auto i = 0; i < symbol_def.size(); ++i) {
     string name = symbol_def[i]->name;
-    strtabSize += name.length() + 1;
+    strtab_size += name.length() + 1;
     Elf32_Sym *sym = symbol_def[i]->prov->sym_tab[name];
     sym->st_shndx =
         exe.get_seg_index(symbol_def[i]->prov->shdr_names[sym->st_shndx]);
     exe.add_symbol(name, sym);
   }
   exe.ehdr.e_entry = exe.sym_tab[START]->st_value;
-  curOff += (1 + symbol_def.size()) * 16;
-  exe.add_section_header(".strtab", SHT_STRTAB, 0, 0, curOff, strtabSize,
+  cur_off += (1 + symbol_def.size()) * 16;
+  exe.add_section_header(".strtab", SHT_STRTAB, 0, 0, cur_off, strtab_size,
                          SHN_UNDEF, 0, 1, 0);
-  str = exe.strtab = new char[strtabSize];
-  exe.strtab_size = strtabSize;
+  str = exe.strtab = new char[strtab_size];
+  exe.strtab_size = strtab_size;
   index = 0;
-  map<string, int> strIndex;
-  strIndex[""] = strtabSize - 1;
+  map<string, int> str_index;
+  str_index[""] = strtab_size - 1;
   for (auto i = 0; i < symbol_def.size(); ++i) {
-    strIndex[symbol_def[i]->name] = index;
+    str_index[symbol_def[i]->name] = index;
     strcpy(str + index, symbol_def[i]->name.c_str());
     index += symbol_def[i]->name.length() + 1;
   }
   for (auto i = exe.sym_tab.begin(); i != exe.sym_tab.end(); ++i) {
-    i->second->st_name = strIndex[i->first];
+    i->second->st_name = str_index[i->first];
   }
   for (auto i = exe.shdr_tab.begin(); i != exe.shdr_tab.end(); ++i) {
-    i->second->sh_name = shstrIndex[i->first];
+    i->second->sh_name = shstr_index[i->first];
   }
 }
 
