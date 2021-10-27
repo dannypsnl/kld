@@ -3,9 +3,9 @@
 #include <string.h>
 
 RelItem::RelItem(string sname, Elf32_Rel *r, string rname) {
-  segName = sname;
+  seg_name = sname;
   rel = r;
-  relName = rname;
+  rel_name = rname;
 }
 
 RelItem::~RelItem() { delete rel; }
@@ -101,7 +101,7 @@ void Elf_file::read_elf(const char *dir) {
   fclose(fp);
 }
 
-int Elf_file::getSegIndex(string segName) {
+int Elf_file::get_seg_index(string segName) {
   int index = 0;
   for (auto i = 0; i < shdr_names.size(); ++i) {
     if (shdr_names[i] == segName)
@@ -111,7 +111,7 @@ int Elf_file::getSegIndex(string segName) {
   return index;
 }
 
-int Elf_file::getSymIndex(string symName) {
+int Elf_file::get_symbol_index(string symName) {
   int index = 0;
   for (auto i = 0; i < sym_names.size(); ++i) {
     if (shdr_names[i] == symName)
@@ -189,7 +189,7 @@ void Elf_file::write_elf(const char *dir, int flag) {
     fclose(fp);
   } else if (flag == 2) {
     FILE *fp = fopen(dir, "a+");
-    fwrite(shstrtab, shstrtabSize, 1, fp);
+    fwrite(shstrtab, shstrtab_size, 1, fp);
     for (auto i = 0; i < shdr_names.size(); ++i) {
       Elf32_Shdr *sh = shdr_tab[shdr_names[i]];
       fwrite(sh, ehdr.e_shentsize, 1, fp);
@@ -198,7 +198,7 @@ void Elf_file::write_elf(const char *dir, int flag) {
       Elf32_Sym *sym = sym_tab[sym_names[i]];
       fwrite(sym, sizeof(Elf32_Sym), 1, fp);
     }
-    fwrite(strtab, strtabSize, 1, fp);
+    fwrite(strtab, strtab_size, 1, fp);
     fclose(fp);
   }
 }

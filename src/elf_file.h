@@ -8,9 +8,9 @@
 using namespace std;
 
 struct RelItem {
-  string segName;
+  string seg_name;
   Elf32_Rel *rel;
-  string relName;
+  string rel_name;
   RelItem(string sname, Elf32_Rel *r, string rname);
   ~RelItem();
 };
@@ -26,16 +26,16 @@ public:
   vector<RelItem *> rel_tab;
   char *elf_dir;
   char *shstrtab;
-  unsigned int shstrtabSize;
+  unsigned int shstrtab_size;
   char *strtab;
-  unsigned int strtabSize;
+  unsigned int strtab_size;
 
 public:
   Elf_file();
   void read_elf(const char *dir);
   void get_data(char *buf, Elf32_Off offset, Elf32_Word size);
-  int getSegIndex(string segName);
-  int getSymIndex(string symName);
+  int get_seg_index(string segName);
+  int get_symbol_index(string symName);
   void add_program_header(Elf32_Word type, Elf32_Off off, Elf32_Addr vaddr,
                           Elf32_Word filesz, Elf32_Word memsz, Elf32_Word flags,
                           Elf32_Word align);

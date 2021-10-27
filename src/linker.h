@@ -14,16 +14,16 @@ struct Block {
   ~Block();
 };
 struct SegList {
-  unsigned int baseAddr;
+  unsigned int base_addr;
   unsigned int offset;
   unsigned int size;
   unsigned int begin;
-  vector<Elf_file *> ownerList;
+  vector<Elf_file *> owner_list;
   vector<Block *> blocks;
 
-  void allocAddr(string name, unsigned int &base, unsigned int &off);
-  void relocAddr(unsigned int relAddr, unsigned char type,
-                 unsigned int symAddr);
+  void alloc_addr(string name, unsigned int &base, unsigned int &off);
+  void reloc_addr(unsigned int relAddr, unsigned char type,
+                  unsigned int symAddr);
   ~SegList();
 };
 
@@ -39,15 +39,15 @@ struct SymLink {
 #define DISC_ALIGN 4
 
 class Linker {
-  vector<string> segNames;
+  vector<string> seg_names;
   Elf_file exe;
-  Elf_file *startOwner;
+  Elf_file *start_owner;
 
 public:
   vector<Elf_file *> elfs;
-  map<string, SegList *> segLists;
-  vector<SymLink *> symLinks;
-  vector<SymLink *> symDef;
+  map<string, SegList *> seg_lists;
+  vector<SymLink *> symbol_links;
+  vector<SymLink *> symbol_def;
 
 public:
   Linker();
