@@ -2,3 +2,4 @@
 build/
 .ccls
 .vagrant/
+compile_commands.json
