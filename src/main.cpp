@@ -1,24 +1,22 @@
 #include "linker.h"
 #include <boost/algorithm/string/predicate.hpp>
-#include <stdio.h>
+#include<iostream>
 
 int main(int argc, char *argv[]) {
   if (argc == 1) {
-    printf("please provide arguments.\n");
+    std::cout << "please provide arguments." << std::endl;
     return 0;
   }
   Linker linker;
-  string desFileName;
   int i = 1;
   while (true) {
     string arg = argv[i];
     if (!boost::algorithm::ends_with(arg, ".o")) {
-      desFileName = arg;
+      linker.link(arg.c_str());
       break;
     }
     linker.add_elf(arg.c_str());
     i++;
   }
-  linker.link(desFileName.c_str());
   return 0;
 }
