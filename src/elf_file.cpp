@@ -65,7 +65,7 @@ void Elf_file::read_elf(const char *dir) {
   Elf32_Shdr *sh_symbol_tab = section_header_table[".symtab"];
   fseek(fp, sh_symbol_tab->sh_offset, 0);
   int symNum = sh_symbol_tab->sh_size / 16;
-  vector < Elf32_Sym * > sym_list;
+  vector<Elf32_Sym *> sym_list;
   for (auto i = 0; i < symNum; ++i) {
     Elf32_Sym *sym = new Elf32_Sym();
     fread(sym, 16, 1, fp);
@@ -77,7 +77,7 @@ void Elf_file::read_elf(const char *dir) {
       symbol_table[name] = sym;
     }
   }
-  for (auto const &[key, val]: section_header_table) {
+  for (auto const &[key, val] : section_header_table) {
     if (key.find(".rel") == 0) {
       Elf32_Shdr *sh_rel_tab = section_header_table[key];
       fseek(fp, sh_rel_tab->sh_offset, 0);
@@ -98,8 +98,8 @@ void Elf_file::read_elf(const char *dir) {
 
 int Elf_file::get_seg_index(string seg_name) {
   int index = 0;
-  for (auto i = 0; i < shdr_names.size(); ++i) {
-    if (shdr_names[i] == seg_name)
+  for (auto name : shdr_names) {
+    if (name == seg_name)
       break;
     ++index;
   }
@@ -187,41 +187,48 @@ void Elf_file::write_elf(const char *dir, int flag) {
   case 2: {
     FILE *fp = fopen(dir, "a+");
     fwrite(shstrtab, shstrtab_size, 1, fp);
-    for (auto i = 0; i < shdr_names.size(); ++i) {
-      Elf32_Shdr *sh = section_header_table[shdr_names[i]];
+    for (auto sec_header_name : shdr_names) {
+      Elf32_Shdr *sh = section_header_table[sec_header_name];
       fwrite(sh, elf_file_header.e_shentsize, 1, fp);
     }
-    for (auto i = 0; i < sym_names.size(); ++i) {
-      Elf32_Sym *sym = symbol_table[sym_names[i]];
+    for (auto name : sym_names) {
+      Elf32_Sym *sym = symbol_table[name];
       fwrite(sym, sizeof(Elf32_Sym), 1, fp);
     }
     fwrite(strtab, strtab_size, 1, fp);
     fclose(fp);
   }
-  default:break;
+  default:
+    break;
     // FIXME: throw error or what
   }
 }
 
 Elf_file::~Elf_file() {
-  for (Elf32_Phdr *header: program_header_table) {
+  for (Elf32_Phdr *header : program_header_table) {
     delete header;
   }
   program_header_table.clear();
-  for (auto const &[key, val]: section_header_table) {
+  for (auto const &[key, val] : section_header_table) {
     delete val;
   }
   section_header_table.clear();
   shdr_names.clear();
-  for (auto const &[key, val]: symbol_table) {
+  for (auto const &[key, val] : symbol_table) {
     delete val;
   }
   symbol_table.clear();
-  for (RelocationItem *v: relocation_table) {
+  for (RelocationItem *v : relocation_table) {
     delete v;
   }
   relocation_table.clear();
-  if (shstrtab != NULL) { delete[] shstrtab; }
-  if (strtab != NULL) { delete[] strtab; }
-  if (elf_dir) { delete elf_dir; }
+  if (shstrtab != NULL) {
+    delete[] shstrtab;
+  }
+  if (strtab != NULL) {
+    delete[] strtab;
+  }
+  if (elf_dir) {
+    delete elf_dir;
+  }
 }
