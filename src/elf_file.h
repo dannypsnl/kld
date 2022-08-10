@@ -1,22 +1,15 @@
 #pragma once
 
 #include "elf.h"
+#include "relocation_item.h"
 #include <map>
 #include <string>
 #include <vector>
 
 using namespace std;
 
-struct RelocationItem {
-  string seg_name;
-  Elf32_Rel *relocation;
-  string rel_name;
-  RelocationItem(string sname, Elf32_Rel *r, string rname);
-  ~RelocationItem();
-};
-
 class Elf_file {
-public:
+ public:
   Elf32_Ehdr elf_file_header;
   vector<Elf32_Phdr *> program_header_table;
   map<string, Elf32_Shdr *> section_header_table;
@@ -30,7 +23,7 @@ public:
   char *strtab;
   unsigned int strtab_size;
 
-public:
+ public:
   Elf_file();
   void read_elf(const char *dir);
   void get_data(char *buf, Elf32_Off offset, Elf32_Word size);

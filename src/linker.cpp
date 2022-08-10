@@ -16,23 +16,25 @@ SegList::~SegList() {
 
 void SegList::alloc_addr(string name, unsigned int &base, unsigned int &off) {
   begin = off;
-  if (name != ".bss")
+  if (name != ".bss") {
     base += (MEM_ALIGN - base % MEM_ALIGN) % MEM_ALIGN;
+  }
   int align = DISC_ALIGN;
-  if (name == ".text")
+  if (name == ".text") {
     align = 16;
+  }
   off += (align - off % align) % align;
   base = base - base % MEM_ALIGN + off % MEM_ALIGN;
 
-  base_addr = base;
-  offset = off;
-  size = 0;
-  for (auto i = 0; i < owner_list.size(); ++i) {
+  this->base_addr = base;
+  this->offset = off;
+  this->size = 0;
+  for (auto elf_file : owner_list) {
     size += (DISC_ALIGN - size % DISC_ALIGN) % DISC_ALIGN;
-    Elf32_Shdr *seg = owner_list[i]->section_header_table[name];
+    Elf32_Shdr *seg = elf_file->section_header_table[name];
     if (name != ".bss") {
       char *buf = new char[seg->sh_size];
-      owner_list[i]->get_data(buf, seg->sh_offset, seg->sh_size);
+      elf_file->get_data(buf, seg->sh_offset, seg->sh_size);
       blocks.push_back(new Block(buf, size, seg->sh_size));
     }
     seg->sh_addr = base + size;
@@ -78,24 +80,23 @@ void Linker::add_elf(const char *dir) {
 void Linker::collect_info() {
   for (auto i = 0; i < elfs.size(); ++i) {
     Elf_file *elf = elfs[i];
-    for (auto i = 0; i < seg_names.size(); ++i)
-      if (elf->section_header_table.find(seg_names[i]) !=
-          elf->section_header_table.end())
-        seg_lists[seg_names[i]]->owner_list.push_back(elf);
-    for (auto symIt = elf->symbol_table.begin();
-         symIt != elf->symbol_table.end(); ++symIt) {
-      {
-        SymLink *symLink = new SymLink();
-        symLink->name = symIt->first;
-        if (symIt->second->st_shndx == STN_UNDEF) {
-          symLink->recv = elf;
-          symLink->prov = NULL;
-          symbol_links.push_back(symLink);
-        } else {
-          symLink->prov = elf;
-          symLink->recv = NULL;
-          symbol_def.push_back(symLink);
-        }
+    for (auto name : seg_names) {
+      if (elf->section_header_table.count(name)) {
+        seg_lists[name]->owner_list.push_back(elf);
+      }
+    }
+
+    for (auto const &[key, val] : elf->symbol_table) {
+      SymLink *symLink = new SymLink();
+      symLink->name = key;
+      if (val->st_shndx == STN_UNDEF) {
+        symLink->recv = elf;
+        symLink->prov = NULL;
+        symbol_links.push_back(symLink);
+      } else {
+        symLink->prov = elf;
+        symLink->recv = NULL;
+        symbol_def.push_back(symLink);
       }
     }
   }
@@ -169,37 +170,33 @@ bool Linker::symbol_is_valid() {
 void Linker::alloc_addr() {
   unsigned int curAddr = BASE_ADDR;
   unsigned int curOff = 52 + 32 * seg_names.size();
-  for (auto i = 0; i < seg_names.size(); ++i) {
-    seg_lists[seg_names[i]]->alloc_addr(seg_names[i], curAddr, curOff);
+  for (auto name : seg_names) {
+    seg_lists[name]->alloc_addr(name, curAddr, curOff);
   }
 }
 
 void Linker::symbol_parser() {
-  for (auto i = 0; i < symbol_def.size(); ++i) {
-    Elf32_Sym *sym = symbol_def[i]->prov->symbol_table[symbol_def[i]->name];
-    string seg_name = symbol_def[i]->prov->shdr_names[sym->st_shndx];
+  for (auto sym_link : symbol_def) {
+    Elf32_Sym *sym = sym_link->prov->symbol_table[sym_link->name];
+    string seg_name = sym_link->prov->shdr_names[sym->st_shndx];
     sym->st_value =
-        sym->st_value +
-        symbol_def[i]->prov->section_header_table[seg_name]->sh_addr;
+        sym->st_value + sym_link->prov->section_header_table[seg_name]->sh_addr;
   }
-  for (auto i = 0; i < symbol_links.size(); ++i) {
-    Elf32_Sym *provsym =
-        symbol_links[i]->prov->symbol_table[symbol_links[i]->name];
-    Elf32_Sym *recvsym =
-        symbol_links[i]->recv->symbol_table[symbol_links[i]->name];
+  for (auto sym_link : symbol_links) {
+    Elf32_Sym *provsym = sym_link->prov->symbol_table[sym_link->name];
+    Elf32_Sym *recvsym = sym_link->recv->symbol_table[sym_link->name];
     recvsym->st_value = provsym->st_value;
   }
 }
 
 void Linker::relocate() {
-  for (auto i = 0; i < elfs.size(); ++i) {
-    auto relocation_table = elfs[i]->relocation_table;
+  for (Elf_file *elf_file : elfs) {
+    auto relocation_table = elf_file->relocation_table;
     for (auto j = 0; j < relocation_table.size(); ++j) {
-      Elf32_Sym *sym = elfs[i]->symbol_table[relocation_table[j]->rel_name];
+      Elf32_Sym *sym = elf_file->symbol_table[relocation_table[j]->rel_name];
       unsigned int symbol_addr = sym->st_value;
       unsigned int relocation_addr =
-          elfs[i]
-              ->section_header_table[relocation_table[j]->seg_name]
+          elf_file->section_header_table[relocation_table[j]->seg_name]
               ->sh_addr +
           relocation_table[j]->relocation->r_offset;
 
@@ -275,10 +272,10 @@ void Linker::assemble_executable() {
   strcpy(str + index, ".strtab");
   index += 8;
   shstr_index[""] = index - 1;
-  for (auto i = 0; i < seg_names.size(); ++i) {
-    shstr_index[seg_names[i]] = index;
-    strcpy(str + index, seg_names[i].c_str());
-    index += seg_names[i].length() + 1;
+  for (auto seg_name : seg_names) {
+    shstr_index[seg_name] = index;
+    strcpy(str + index, seg_name.c_str());
+    index += seg_name.length() + 1;
   }
   exe.add_section_header(".shstrtab", SHT_STRTAB, 0, 0, cur_off, shstrtabSize,
                          SHN_UNDEF, 0, 1, 0);
@@ -294,12 +291,12 @@ void Linker::assemble_executable() {
       exe.get_seg_index(".symtab") + 1;
   int strtab_size = 0;
   exe.add_symbol("", NULL);
-  for (auto i = 0; i < symbol_def.size(); ++i) {
-    string name = symbol_def[i]->name;
+  for (auto sym_link : symbol_def) {
+    string name = sym_link->name;
     strtab_size += name.length() + 1;
-    Elf32_Sym *sym = symbol_def[i]->prov->symbol_table[name];
+    Elf32_Sym *sym = sym_link->prov->symbol_table[name];
     sym->st_shndx =
-        exe.get_seg_index(symbol_def[i]->prov->shdr_names[sym->st_shndx]);
+        exe.get_seg_index(sym_link->prov->shdr_names[sym->st_shndx]);
     exe.add_symbol(name, sym);
   }
   exe.elf_file_header.e_entry = exe.symbol_table[START]->st_value;
@@ -311,17 +308,16 @@ void Linker::assemble_executable() {
   index = 0;
   map<string, int> str_index;
   str_index[""] = strtab_size - 1;
-  for (auto i = 0; i < symbol_def.size(); ++i) {
-    str_index[symbol_def[i]->name] = index;
-    strcpy(str + index, symbol_def[i]->name.c_str());
-    index += symbol_def[i]->name.length() + 1;
+  for (auto sym_link : symbol_def) {
+    str_index[sym_link->name] = index;
+    strcpy(str + index, sym_link->name.c_str());
+    index += sym_link->name.length() + 1;
   }
-  for (auto i = exe.symbol_table.begin(); i != exe.symbol_table.end(); ++i) {
-    i->second->st_name = str_index[i->first];
+  for (auto const &[name, symbol] : exe.symbol_table) {
+    symbol->st_name = str_index[name];
   }
-  for (auto i = exe.section_header_table.begin();
-       i != exe.section_header_table.end(); ++i) {
-    i->second->sh_name = shstr_index[i->first];
+  for (auto const &[name, sec_header] : exe.section_header_table) {
+    sec_header->sh_name = shstr_index[name];
   }
 }
 
@@ -366,20 +362,20 @@ bool Linker::link(const char *dir) {
 }
 
 Linker::~Linker() {
-  for (auto i = seg_lists.begin(); i != seg_lists.end(); ++i) {
-    delete i->second;
+  for (auto const &[key, val] : seg_lists) {
+    delete val;
   }
   seg_lists.clear();
-  for (auto i = symbol_links.begin(); i != symbol_links.end(); ++i) {
-    delete *i;
+  for (SymLink *v : symbol_links) {
+    delete v;
   }
   symbol_links.clear();
-  for (auto i = symbol_def.begin(); i != symbol_def.end(); ++i) {
-    delete *i;
+  for (SymLink *v : symbol_def) {
+    delete v;
   }
   symbol_def.clear();
-  for (auto i = 0; i < elfs.size(); ++i) {
-    delete elfs[i];
+  for (Elf_file *file : elfs) {
+    delete file;
   }
   elfs.clear();
 }

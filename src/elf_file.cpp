@@ -2,14 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-RelocationItem::RelocationItem(string sname, Elf32_Rel *r, string rname) {
-  seg_name = sname;
-  relocation = r;
-  rel_name = rname;
-}
-
-RelocationItem::~RelocationItem() { delete relocation; }
-
 void Elf_file::get_data(char *buf, Elf32_Off offset, Elf32_Word size) {
   FILE *fp = fopen(elf_dir, "rb");
   rewind(fp);
@@ -73,7 +65,7 @@ void Elf_file::read_elf(const char *dir) {
   Elf32_Shdr *sh_symbol_tab = section_header_table[".symtab"];
   fseek(fp, sh_symbol_tab->sh_offset, 0);
   int symNum = sh_symbol_tab->sh_size / 16;
-  vector<Elf32_Sym *> sym_list;
+  vector < Elf32_Sym * > sym_list;
   for (auto i = 0; i < symNum; ++i) {
     Elf32_Sym *sym = new Elf32_Sym();
     fread(sym, 16, 1, fp);
@@ -85,10 +77,9 @@ void Elf_file::read_elf(const char *dir) {
       symbol_table[name] = sym;
     }
   }
-  for (auto i = section_header_table.begin(); i != section_header_table.end();
-       ++i) {
-    if (i->first.find(".rel") == 0) {
-      Elf32_Shdr *sh_rel_tab = section_header_table[i->first];
+  for (auto const &[key, val]: section_header_table) {
+    if (key.find(".rel") == 0) {
+      Elf32_Shdr *sh_rel_tab = section_header_table[key];
       fseek(fp, sh_rel_tab->sh_offset, 0);
       int relNum = sh_rel_tab->sh_size / 8;
       for (int j = 0; j < relNum; ++j) {
@@ -96,7 +87,7 @@ void Elf_file::read_elf(const char *dir) {
         fread(rel, 8, 1, fp);
         string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)]->st_name);
         relocation_table.push_back(
-            new RelocationItem(i->first.substr(4), rel, name));
+            new RelocationItem(key.substr(4), rel, name));
       }
     }
   }
@@ -145,8 +136,7 @@ void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
                                   Elf32_Off sh_offset, Elf32_Word sh_size,
                                   Elf32_Word sh_link, Elf32_Word sh_info,
                                   Elf32_Word sh_addralign,
-                                  Elf32_Word sh_entsize) //添加一个段表项
-{
+                                  Elf32_Word sh_entsize) {
   Elf32_Shdr *sh = new Elf32_Shdr();
   sh->sh_name = 0;
   sh->sh_type = sh_type;
@@ -163,7 +153,7 @@ void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
 }
 
 void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
-  Elf32_Sym *sym = symbol_table[st_name] = new Elf32_Sym();
+  Elf32_Sym *sym = new Elf32_Sym();
   if (st_name == "") {
     sym->st_name = 0;
     sym->st_value = 0;
@@ -179,11 +169,13 @@ void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
     sym->st_other = s->st_other;
     sym->st_shndx = s->st_shndx;
   }
+  symbol_table[st_name] = sym;
   sym_names.push_back(st_name);
 }
 
 void Elf_file::write_elf(const char *dir, int flag) {
-  if (flag == 1) {
+  switch (flag) {
+  case 1: {
     FILE *fp = fopen(dir, "w+");
     fwrite(&elf_file_header, elf_file_header.e_ehsize, 1, fp);
     if (!program_header_table.empty()) {
@@ -191,7 +183,8 @@ void Elf_file::write_elf(const char *dir, int flag) {
         fwrite(program_header_table[i], elf_file_header.e_phentsize, 1, fp);
     }
     fclose(fp);
-  } else if (flag == 2) {
+  }
+  case 2: {
     FILE *fp = fopen(dir, "a+");
     fwrite(shstrtab, shstrtab_size, 1, fp);
     for (auto i = 0; i < shdr_names.size(); ++i) {
@@ -205,32 +198,30 @@ void Elf_file::write_elf(const char *dir, int flag) {
     fwrite(strtab, strtab_size, 1, fp);
     fclose(fp);
   }
+  default:break;
+    // FIXME: throw error or what
+  }
 }
 
 Elf_file::~Elf_file() {
-  for (auto i = program_header_table.begin(); i != program_header_table.end();
-       ++i) {
-    delete *i;
+  for (Elf32_Phdr *header: program_header_table) {
+    delete header;
   }
   program_header_table.clear();
-  for (auto i = section_header_table.begin(); i != section_header_table.end();
-       ++i) {
-    delete i->second;
+  for (auto const &[key, val]: section_header_table) {
+    delete val;
   }
   section_header_table.clear();
   shdr_names.clear();
-  for (auto i = symbol_table.begin(); i != symbol_table.end(); ++i) {
-    delete i->second;
+  for (auto const &[key, val]: symbol_table) {
+    delete val;
   }
   symbol_table.clear();
-  for (auto i = relocation_table.begin(); i != relocation_table.end(); ++i) {
-    delete *i;
+  for (RelocationItem *v: relocation_table) {
+    delete v;
   }
   relocation_table.clear();
-  if (shstrtab != NULL)
-    delete[] shstrtab;
-  if (strtab != NULL)
-    delete[] strtab;
-  if (elf_dir)
-    delete elf_dir;
+  if (shstrtab != NULL) { delete[] shstrtab; }
+  if (strtab != NULL) { delete[] strtab; }
+  if (elf_dir) { delete elf_dir; }
 }
