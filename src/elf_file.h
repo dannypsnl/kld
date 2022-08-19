@@ -25,6 +25,8 @@ public:
 
 public:
   Elf_file();
+  ~Elf_file();
+
   void read_elf(string dir);
   void get_data(char *buf, Elf32_Off offset, Elf32_Word size);
   int get_seg_index(string segName);
@@ -40,5 +42,4 @@ public:
   void add_empty_symbol();
   void add_symbol(string st_name, Elf32_Sym &sym);
   void write_elf(const char *dir, int flag);
-  ~Elf_file();
 };

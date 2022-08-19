@@ -209,6 +209,7 @@ Elf_file::~Elf_file() {
     delete v;
   }
   relocation_table.clear();
+  elf_dir.clear();
   if (shstrtab != NULL) {
     delete[] shstrtab;
   }
