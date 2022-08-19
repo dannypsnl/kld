@@ -26,10 +26,9 @@ void Elf_file::read_elf(const char *dir) {
 
   if (elf_file_header.e_type == ET_EXEC) {
     fseek(fp, elf_file_header.e_phoff, 0);
-    for (auto i = 0; i < elf_file_header.e_phnum; ++i) {
-      Elf32_Phdr *phdr = new Elf32_Phdr();
-      fread(phdr, elf_file_header.e_phentsize, 1, fp);
-      program_header_table.push_back(phdr);
+    program_header_table.resize(elf_file_header.e_phnum);
+    for (auto program_header : program_header_table) {
+      fread(&program_header, elf_file_header.e_phentsize, 1, fp);
     }
   }
 
@@ -120,14 +119,14 @@ void Elf_file::add_program_header(Elf32_Word type, Elf32_Off off,
                                   Elf32_Addr vaddr, Elf32_Word filesz,
                                   Elf32_Word memsz, Elf32_Word flags,
                                   Elf32_Word align) {
-  Elf32_Phdr *ph = new Elf32_Phdr();
-  ph->p_type = type;
-  ph->p_offset = off;
-  ph->p_vaddr = ph->p_paddr = vaddr;
-  ph->p_filesz = filesz;
-  ph->p_memsz = memsz;
-  ph->p_flags = flags;
-  ph->p_align = align;
+  Elf32_Phdr ph;
+  ph.p_type = type;
+  ph.p_offset = off;
+  ph.p_vaddr = ph.p_paddr = vaddr;
+  ph.p_filesz = filesz;
+  ph.p_memsz = memsz;
+  ph.p_flags = flags;
+  ph.p_align = align;
   program_header_table.push_back(ph);
 }
 
@@ -179,8 +178,9 @@ void Elf_file::write_elf(const char *dir, int flag) {
     FILE *fp = fopen(dir, "w+");
     fwrite(&elf_file_header, elf_file_header.e_ehsize, 1, fp);
     if (!program_header_table.empty()) {
-      for (auto i = 0; i < program_header_table.size(); ++i)
-        fwrite(program_header_table[i], elf_file_header.e_phentsize, 1, fp);
+      for (auto program_header : program_header_table) {
+        fwrite(&program_header, elf_file_header.e_phentsize, 1, fp);
+      }
     }
     fclose(fp);
   }
@@ -205,9 +205,6 @@ void Elf_file::write_elf(const char *dir, int flag) {
 }
 
 Elf_file::~Elf_file() {
-  for (Elf32_Phdr *header : program_header_table) {
-    delete header;
-  }
   program_header_table.clear();
   for (auto const &[key, val] : section_header_table) {
     delete val;

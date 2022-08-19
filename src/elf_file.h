@@ -9,9 +9,9 @@
 using namespace std;
 
 class Elf_file {
- public:
+public:
   Elf32_Ehdr elf_file_header;
-  vector<Elf32_Phdr *> program_header_table;
+  vector<Elf32_Phdr> program_header_table;
   map<string, Elf32_Shdr *> section_header_table;
   vector<string> shdr_names;
   map<string, Elf32_Sym *> symbol_table;
@@ -23,7 +23,7 @@ class Elf_file {
   char *strtab;
   unsigned int strtab_size;
 
- public:
+public:
   Elf_file();
   void read_elf(const char *dir);
   void get_data(char *buf, Elf32_Off offset, Elf32_Word size);
