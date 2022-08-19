@@ -51,8 +51,8 @@ class Linker {
 public:
   vector<Elf_file> elfs;
   map<string, SegList *> seg_lists;
-  vector<SymLink *> symbol_links;
-  vector<SymLink *> symbol_def;
+  vector<SymLink> symbol_links;
+  vector<SymLink> symbol_def;
 
 public:
   Linker();

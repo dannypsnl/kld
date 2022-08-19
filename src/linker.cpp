@@ -87,15 +87,15 @@ void Linker::collect_info() {
     }
 
     for (auto const &[key, val] : elf.symbol_table) {
-      SymLink *symLink = new SymLink();
-      symLink->name = key;
+      SymLink symLink;
+      symLink.name = key;
       if (val.st_shndx == STN_UNDEF) {
-        symLink->recv = elf;
-        symLink->prov = nullopt;
+        symLink.recv = elf;
+        symLink.prov = nullopt;
         symbol_links.push_back(symLink);
       } else {
-        symLink->recv = nullopt;
-        symLink->prov = elf;
+        symLink.recv = nullopt;
+        symLink.prov = elf;
         symbol_def.push_back(symLink);
       }
     }
@@ -107,23 +107,23 @@ bool Linker::symbol_is_valid() {
   optional<Elf_file> start_owner{nullopt};
   for (auto i = 0; i < symbol_def.size(); ++i) {
     if (ELF32_ST_BIND(
-            symbol_def[i]->prov->symbol_table[symbol_def[i]->name].st_info) !=
+            symbol_def[i].prov->symbol_table[symbol_def[i].name].st_info) !=
         STB_GLOBAL) {
       continue;
     }
-    if (symbol_def[i]->name == START) {
-      start_owner = symbol_def[i]->prov;
+    if (symbol_def[i].name == START) {
+      start_owner = symbol_def[i].prov;
     }
     for (auto j = i + 1; j < symbol_def.size(); ++j) {
       if (ELF32_ST_BIND(
-              symbol_def[j]->prov->symbol_table[symbol_def[j]->name].st_info) !=
+              symbol_def[j].prov->symbol_table[symbol_def[j].name].st_info) !=
           STB_GLOBAL) {
         continue;
       }
-      if (symbol_def[i]->name == symbol_def[j]->name) {
-        cout << "symbol " << symbol_def[i]->name << " in "
-             << symbol_def[i]->prov->elf_dir << " and "
-             << symbol_def[j]->prov->elf_dir << " are redefined." << endl;
+      if (symbol_def[i].name == symbol_def[j].name) {
+        cout << "symbol " << symbol_def[i].name << " in "
+             << symbol_def[i].prov->elf_dir << " and "
+             << symbol_def[j].prov->elf_dir << " are redefined." << endl;
         flag = false;
       }
     }
@@ -135,19 +135,17 @@ bool Linker::symbol_is_valid() {
   for (auto i = 0; i < symbol_links.size(); ++i) {
     for (auto j = 0; j < symbol_def.size(); ++j) {
       if (ELF32_ST_BIND(
-              symbol_def[j]->prov->symbol_table[symbol_def[j]->name].st_info) !=
+              symbol_def[j].prov->symbol_table[symbol_def[j].name].st_info) !=
           STB_GLOBAL)
         continue;
-      if (symbol_links[i]->name == symbol_def[j]->name
-
-      ) {
-        symbol_links[i]->prov = symbol_def[j]->prov;
-        symbol_def[j]->recv = symbol_def[j]->prov;
+      if (symbol_links[i].name == symbol_def[j].name) {
+        symbol_links[i].prov = symbol_def[j].prov;
+        symbol_def[j].recv = symbol_def[j].prov;
       }
     }
-    if (!symbol_links[i]->prov) {
+    if (!symbol_links[i].prov) {
       unsigned char info =
-          symbol_links[i]->recv->symbol_table[symbol_links[i]->name].st_info;
+          symbol_links[i].recv->symbol_table[symbol_links[i].name].st_info;
       string type;
       switch (ELF32_ST_TYPE(info)) {
       case STT_OBJECT:
@@ -160,8 +158,8 @@ bool Linker::symbol_is_valid() {
         type = "symbol";
         break;
       }
-      cout << "in file " << symbol_links[i]->recv->elf_dir << " type " << type
-           << " named " << symbol_links[i]->name << " is undefined." << endl;
+      cout << "in file " << symbol_links[i].recv->elf_dir << " type " << type
+           << " named " << symbol_links[i].name << " is undefined." << endl;
       if (flag) {
         flag = false;
       }
@@ -179,15 +177,15 @@ void Linker::alloc_addr() {
 }
 
 void Linker::symbol_parser() {
-  for (auto sym_link : symbol_def) {
-    Elf32_Sym &sym = sym_link->prov->symbol_table[sym_link->name];
-    string seg_name = sym_link->prov->shdr_names[sym.st_shndx];
+  for (auto &sym_link : symbol_def) {
+    Elf32_Sym &sym = sym_link.prov->symbol_table[sym_link.name];
+    string seg_name = sym_link.prov->shdr_names[sym.st_shndx];
     sym.st_value =
-        sym.st_value + sym_link->prov->section_header_table[seg_name].sh_addr;
+        sym.st_value + sym_link.prov->section_header_table[seg_name].sh_addr;
   }
   for (auto sym_link : symbol_links) {
-    Elf32_Sym &provsym = sym_link->prov->symbol_table[sym_link->name];
-    Elf32_Sym &recvsym = sym_link->recv->symbol_table[sym_link->name];
+    Elf32_Sym &provsym = sym_link.prov->symbol_table[sym_link.name];
+    Elf32_Sym &recvsym = sym_link.recv->symbol_table[sym_link.name];
     recvsym.st_value = provsym.st_value;
   }
 }
@@ -294,11 +292,11 @@ void Linker::assemble_executable() {
       exe.get_seg_index(".symtab") + 1;
   int strtab_size = 0;
   exe.add_empty_symbol();
-  for (auto sym_link : symbol_def) {
-    string name = sym_link->name;
+  for (auto &sym_link : symbol_def) {
+    string name = sym_link.name;
     strtab_size += name.length() + 1;
-    Elf32_Sym sym = sym_link->prov->symbol_table[name];
-    sym.st_shndx = exe.get_seg_index(sym_link->prov->shdr_names[sym.st_shndx]);
+    Elf32_Sym sym = sym_link.prov->symbol_table[name];
+    sym.st_shndx = exe.get_seg_index(sym_link.prov->shdr_names[sym.st_shndx]);
     exe.add_symbol(name, sym);
   }
   exe.elf_file_header.e_entry = exe.symbol_table[START].st_value;
@@ -312,9 +310,9 @@ void Linker::assemble_executable() {
   map<string, int> str_index;
   str_index[""] = strtab_size - 1;
   for (auto sym_link : symbol_def) {
-    str_index[sym_link->name] = index;
-    strcpy(str + index, sym_link->name.c_str());
-    index += sym_link->name.length() + 1;
+    str_index[sym_link.name] = index;
+    strcpy(str + index, sym_link.name.c_str());
+    index += sym_link.name.length() + 1;
   }
   for (auto &[name, symbol] : exe.symbol_table) {
     symbol.st_name = str_index[name];
@@ -369,13 +367,7 @@ Linker::~Linker() {
     delete val;
   }
   seg_lists.clear();
-  for (SymLink *v : symbol_links) {
-    delete v;
-  }
   symbol_links.clear();
-  for (SymLink *v : symbol_def) {
-    delete v;
-  }
   symbol_def.clear();
   elfs.clear();
 }
