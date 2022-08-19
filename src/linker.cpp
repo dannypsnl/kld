@@ -149,12 +149,16 @@ bool Linker::symbol_is_valid() {
       unsigned char info =
           symbol_links[i]->recv->symbol_table[symbol_links[i]->name]->st_info;
       string type;
-      if (ELF32_ST_TYPE(info) == STT_OBJECT) {
+      switch (ELF32_ST_TYPE(info)) {
+      case STT_OBJECT:
         type = "variable";
-      } else if (ELF32_ST_TYPE(info) == STT_FUNC) {
+        break;
+      case STT_FUNC:
         type = "function";
-      } else {
+        break;
+      default:
         type = "symbol";
+        break;
       }
       printf("in file %s type %s named %s is undefined.\n",
              symbol_links[i]->recv->elf_dir, type.c_str(),
