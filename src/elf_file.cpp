@@ -76,9 +76,9 @@ void Elf_file::read_elf(string dir) {
       fseek(fp, sh_rel_tab.sh_offset, 0);
       int relNum = sh_rel_tab.sh_size / 8;
       for (int j = 0; j < relNum; ++j) {
-        Elf32_Rel *rel = new Elf32_Rel();
-        fread(rel, 8, 1, fp);
-        string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)].st_name);
+        Elf32_Rel rel;
+        fread(&rel, 8, 1, fp);
+        string name{str_tab_data + sym_list[ELF32_R_SYM(rel.r_info)].st_name};
         relocation_table.push_back(RelocationItem(key.substr(4), rel, name));
       }
     }

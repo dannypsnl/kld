@@ -200,10 +200,10 @@ void Linker::relocate() {
       unsigned int symbol_addr = sym.st_value;
       unsigned int relocation_addr =
           elf_file->section_header_table[relocation_table[j].seg_name].sh_addr +
-          relocation_table[j].relocation->r_offset;
+          relocation_table[j].relocation.r_offset;
 
       seg_lists[relocation_table[j].seg_name]->reloc_addr(
-          relocation_addr, ELF32_R_TYPE(relocation_table[j].relocation->r_info),
+          relocation_addr, ELF32_R_TYPE(relocation_table[j].relocation.r_info),
           symbol_addr);
     }
   }
