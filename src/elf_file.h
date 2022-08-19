@@ -16,7 +16,7 @@ public:
   vector<string> shdr_names;
   map<string, Elf32_Sym> symbol_table;
   vector<string> sym_names;
-  vector<RelocationItem *> relocation_table;
+  vector<RelocationItem> relocation_table;
   string elf_dir;
   char *shstrtab;
   unsigned int shstrtab_size;

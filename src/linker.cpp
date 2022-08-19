@@ -196,16 +196,15 @@ void Linker::relocate() {
   for (Elf_file *elf_file : elfs) {
     auto relocation_table = elf_file->relocation_table;
     for (auto j = 0; j < relocation_table.size(); ++j) {
-      Elf32_Sym &sym = elf_file->symbol_table[relocation_table[j]->rel_name];
+      Elf32_Sym &sym = elf_file->symbol_table[relocation_table[j].rel_name];
       unsigned int symbol_addr = sym.st_value;
       unsigned int relocation_addr =
-          elf_file->section_header_table[relocation_table[j]->seg_name]
-              .sh_addr +
-          relocation_table[j]->relocation->r_offset;
+          elf_file->section_header_table[relocation_table[j].seg_name].sh_addr +
+          relocation_table[j].relocation->r_offset;
 
-      seg_lists[relocation_table[j]->seg_name]->reloc_addr(
-          relocation_addr,
-          ELF32_R_TYPE(relocation_table[j]->relocation->r_info), symbol_addr);
+      seg_lists[relocation_table[j].seg_name]->reloc_addr(
+          relocation_addr, ELF32_R_TYPE(relocation_table[j].relocation->r_info),
+          symbol_addr);
     }
   }
 }

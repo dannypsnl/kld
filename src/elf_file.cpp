@@ -79,8 +79,7 @@ void Elf_file::read_elf(string dir) {
         Elf32_Rel *rel = new Elf32_Rel();
         fread(rel, 8, 1, fp);
         string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)].st_name);
-        relocation_table.push_back(
-            new RelocationItem(key.substr(4), rel, name));
+        relocation_table.push_back(RelocationItem(key.substr(4), rel, name));
       }
     }
   }
@@ -205,9 +204,6 @@ Elf_file::~Elf_file() {
   section_header_table.clear();
   shdr_names.clear();
   symbol_table.clear();
-  for (RelocationItem *v : relocation_table) {
-    delete v;
-  }
   relocation_table.clear();
   elf_dir.clear();
   if (shstrtab != NULL) {
