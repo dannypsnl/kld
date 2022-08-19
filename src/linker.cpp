@@ -59,7 +59,7 @@ Linker::Linker() {
   seg_names.push_back(".data");
   seg_names.push_back(".bss");
   for (auto i = 0; i < seg_names.size(); ++i)
-    seg_lists[seg_names[i]] = new SegList();
+    seg_lists[seg_names[i]] = SegList();
 }
 
 void Linker::add_elf(string dir) {
@@ -73,7 +73,7 @@ void Linker::collect_info() {
     Elf_file &elf = elf_files[i];
     for (auto name : seg_names) {
       if (elf.section_header_table.count(name)) {
-        seg_lists[name]->owner_list.push_back(elf);
+        seg_lists[name].owner_list.push_back(elf);
       }
     }
 
@@ -163,7 +163,7 @@ void Linker::alloc_addr() {
   unsigned int curAddr = BASE_ADDR;
   unsigned int curOff = 52 + 32 * seg_names.size();
   for (auto name : seg_names) {
-    seg_lists[name]->alloc_addr(name, curAddr, curOff);
+    seg_lists[name].alloc_addr(name, curAddr, curOff);
   }
 }
 
@@ -191,7 +191,7 @@ void Linker::relocate() {
           elf_file.section_header_table[relocation_table[j].seg_name].sh_addr +
           relocation_table[j].relocation.r_offset;
 
-      seg_lists[relocation_table[j].seg_name]->reloc_addr(
+      seg_lists[relocation_table[j].seg_name].reloc_addr(
           relocation_addr, ELF32_R_TYPE(relocation_table[j].relocation.r_info),
           symbol_addr);
     }
@@ -220,17 +220,17 @@ void Linker::assemble_executable() {
     shstrtabSize += name.length() + 1;
 
     Elf32_Word flags = PF_W | PF_R;
-    Elf32_Word filesz = seg_lists[name]->size;
+    Elf32_Word filesz = seg_lists[name].size;
     if (name == ".text") {
       flags = PF_X | PF_R;
     }
     if (name == ".bss") {
       filesz = 0;
     }
-    exe.add_program_header(PT_LOAD, seg_lists[name]->offset,
-                           seg_lists[name]->base_addr, filesz,
-                           seg_lists[name]->size, flags, MEM_ALIGN);
-    cur_off = seg_lists[name]->offset;
+    exe.add_program_header(PT_LOAD, seg_lists[name].offset,
+                           seg_lists[name].base_addr, filesz,
+                           seg_lists[name].size, flags, MEM_ALIGN);
+    cur_off = seg_lists[name].offset;
 
     Elf32_Word sh_type = SHT_PROGBITS;
     Elf32_Word sh_flags = SHF_ALLOC | SHF_WRITE;
@@ -242,8 +242,8 @@ void Linker::assemble_executable() {
       sh_flags = SHF_ALLOC | SHF_EXECINSTR;
       sh_align = 16;
     }
-    exe.add_section_header(name, sh_type, sh_flags, seg_lists[name]->base_addr,
-                           seg_lists[name]->offset, seg_lists[name]->size,
+    exe.add_section_header(name, sh_type, sh_flags, seg_lists[name].base_addr,
+                           seg_lists[name].offset, seg_lists[name].size,
                            SHN_UNDEF, 0, sh_align, 0);
   }
   exe.elf_file_header.e_phoff = 52;
@@ -318,15 +318,15 @@ void Linker::export_elf(const char *dir) {
   FILE *fp = fopen(dir, "a+");
   char pad[1] = {0};
   for (auto i = 0; i < seg_names.size(); ++i) {
-    SegList *sl = seg_lists[seg_names[i]];
-    int padnum = sl->offset - sl->begin;
+    SegList &sl = seg_lists[seg_names[i]];
+    int padnum = sl.offset - sl.begin;
     while (padnum--)
       fwrite(pad, 1, 1, fp);
     if (seg_names[i] != ".bss") {
       optional<Block> old{nullopt};
       char instPad[1] = {(char)0x90};
-      for (auto j = 0; j < sl->blocks.size(); ++j) {
-        Block &b = sl->blocks[j];
+      for (auto j = 0; j < sl.blocks.size(); ++j) {
+        Block &b = sl.blocks[j];
         if (old) {
           padnum = b.offset - (old->offset + old->size);
           while (padnum--)
@@ -351,14 +351,4 @@ bool Linker::link(const char *dir) {
   assemble_executable();
   export_elf(dir);
   return true;
-}
-
-Linker::~Linker() {
-  for (auto const &[key, val] : seg_lists) {
-    delete val;
-  }
-  seg_lists.clear();
-  symbol_links.clear();
-  symbol_def.clear();
-  elf_files.clear();
 }

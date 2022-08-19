@@ -48,7 +48,7 @@ class Linker {
 
 public:
   vector<Elf_file> elf_files;
-  map<string, SegList *> seg_lists;
+  map<string, SegList> seg_lists;
   vector<SymLink> symbol_links;
   vector<SymLink> symbol_def;
 
@@ -70,5 +70,4 @@ public:
   /// export elf to a file
   void export_elf(const char *dir);
   bool link(const char *dir);
-  ~Linker();
 };
