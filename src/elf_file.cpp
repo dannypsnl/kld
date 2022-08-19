@@ -168,29 +168,28 @@ void Elf_file::write_elf(const char *dir, int flag) {
   case 1: {
     FILE *fp = fopen(dir, "w+");
     fwrite(&elf_file_header, elf_file_header.e_ehsize, 1, fp);
-    if (!program_header_table.empty()) {
-      for (auto program_header : program_header_table) {
-        fwrite(&program_header, elf_file_header.e_phentsize, 1, fp);
-      }
+    for (auto program_header : program_header_table) {
+      fwrite(&program_header, elf_file_header.e_phentsize, 1, fp);
     }
     fclose(fp);
+    break;
   }
   case 2: {
     FILE *fp = fopen(dir, "a+");
     fwrite(shstrtab.data(), shstrtab_size, 1, fp);
-    for (auto sec_header_name : shdr_names) {
+    for (string &sec_header_name : shdr_names) {
       Elf32_Shdr &sh = section_header_table[sec_header_name];
       fwrite(&sh, elf_file_header.e_shentsize, 1, fp);
     }
-    for (auto name : sym_names) {
+    for (string &name : sym_names) {
       Elf32_Sym sym = symbol_table[name];
       fwrite(&sym, sizeof(Elf32_Sym), 1, fp);
     }
     fwrite(strtab.data(), strtab_size, 1, fp);
     fclose(fp);
+    break;
   }
   default:
     break;
-    // FIXME: throw error or what
   }
 }
