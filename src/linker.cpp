@@ -2,9 +2,8 @@
 #include <iostream>
 #include <stdio.h>
 
-Block::Block(char *d, unsigned int off, unsigned int s)
+Block::Block(string d, unsigned int off, unsigned int s)
     : data{d}, offset{off}, size{s} {}
-Block::~Block() { delete[] data; }
 
 void SegList::alloc_addr(string name, unsigned int &base, unsigned int &off) {
   begin = off;
@@ -44,7 +43,7 @@ void SegList::reloc_addr(unsigned int rel_addr, unsigned char type,
     if (blocks[i].offset <= relOffset &&
         blocks[i].offset + blocks[i].size > relOffset) {
       Block &b = blocks[i];
-      int *pAddr = (int *)(b.data + relOffset - b.offset);
+      int *pAddr = (int *)(b.data.data() + relOffset - b.offset);
       if (type == R_386_32) {
         *pAddr = sym_addr;
       } else if (type == R_386_PC32) {
@@ -334,7 +333,7 @@ void Linker::export_elf(const char *dir) {
             fwrite(instPad, 1, 1, fp);
         }
         old = b;
-        fwrite(b.data, b.size, 1, fp);
+        fwrite(b.data.data(), b.size, 1, fp);
       }
     }
   }

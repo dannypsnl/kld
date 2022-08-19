@@ -10,11 +10,10 @@ using namespace std;
 
 /// Block
 struct Block {
-  char *data;
+  string data;
   unsigned int offset;
   unsigned int size;
-  Block(char *d, unsigned int off, unsigned int s);
-  ~Block();
+  Block(string d, unsigned int off, unsigned int s);
 };
 /// SegList
 struct SegList {
