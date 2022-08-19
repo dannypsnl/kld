@@ -29,12 +29,12 @@ void SegList::alloc_addr(string name, unsigned int &base, unsigned int &off) {
   this->base_addr = base;
   this->offset = off;
   this->size = 0;
-  for (auto elf_file : owner_list) {
+  for (auto &elf_file : owner_list) {
     size += (DISC_ALIGN - size % DISC_ALIGN) % DISC_ALIGN;
-    Elf32_Shdr &seg = elf_file->section_header_table[name];
+    Elf32_Shdr &seg = elf_file.section_header_table[name];
     if (name != ".bss") {
       char *buf = new char[seg.sh_size];
-      elf_file->get_data(buf, seg.sh_offset, seg.sh_size);
+      elf_file.get_data(buf, seg.sh_offset, seg.sh_size);
       blocks.push_back(new Block(buf, size, seg.sh_size));
     }
     seg.sh_addr = base + size;
@@ -72,30 +72,30 @@ Linker::Linker() {
 }
 
 void Linker::add_elf(string dir) {
-  Elf_file *elf = new Elf_file();
-  elf->read_elf(dir);
+  Elf_file elf;
+  elf.read_elf(dir);
   elfs.push_back(elf);
 }
 
 void Linker::collect_info() {
   for (auto i = 0; i < elfs.size(); ++i) {
-    Elf_file *elf = elfs[i];
+    Elf_file &elf = elfs[i];
     for (auto name : seg_names) {
-      if (elf->section_header_table.count(name)) {
+      if (elf.section_header_table.count(name)) {
         seg_lists[name]->owner_list.push_back(elf);
       }
     }
 
-    for (auto const &[key, val] : elf->symbol_table) {
+    for (auto const &[key, val] : elf.symbol_table) {
       SymLink *symLink = new SymLink();
       symLink->name = key;
       if (val.st_shndx == STN_UNDEF) {
         symLink->recv = elf;
-        symLink->prov = NULL;
+        symLink->prov = nullopt;
         symbol_links.push_back(symLink);
       } else {
+        symLink->recv = nullopt;
         symLink->prov = elf;
-        symLink->recv = NULL;
         symbol_def.push_back(symLink);
       }
     }
@@ -104,7 +104,7 @@ void Linker::collect_info() {
 
 bool Linker::symbol_is_valid() {
   bool flag = true;
-  start_owner = NULL;
+  optional<Elf_file> start_owner{nullopt};
   for (auto i = 0; i < symbol_def.size(); ++i) {
     if (ELF32_ST_BIND(
             symbol_def[i]->prov->symbol_table[symbol_def[i]->name].st_info) !=
@@ -128,7 +128,7 @@ bool Linker::symbol_is_valid() {
       }
     }
   }
-  if (start_owner == NULL) {
+  if (!start_owner) {
     printf("linker cannot find entry %s.\n", START);
     flag = false;
   }
@@ -145,7 +145,7 @@ bool Linker::symbol_is_valid() {
         symbol_def[j]->recv = symbol_def[j]->prov;
       }
     }
-    if (symbol_links[i]->prov == NULL) {
+    if (!symbol_links[i]->prov) {
       unsigned char info =
           symbol_links[i]->recv->symbol_table[symbol_links[i]->name].st_info;
       string type;
@@ -193,13 +193,13 @@ void Linker::symbol_parser() {
 }
 
 void Linker::relocate() {
-  for (Elf_file *elf_file : elfs) {
-    auto relocation_table = elf_file->relocation_table;
+  for (Elf_file &elf_file : elfs) {
+    auto relocation_table = elf_file.relocation_table;
     for (auto j = 0; j < relocation_table.size(); ++j) {
-      Elf32_Sym &sym = elf_file->symbol_table[relocation_table[j].rel_name];
+      Elf32_Sym &sym = elf_file.symbol_table[relocation_table[j].rel_name];
       unsigned int symbol_addr = sym.st_value;
       unsigned int relocation_addr =
-          elf_file->section_header_table[relocation_table[j].seg_name].sh_addr +
+          elf_file.section_header_table[relocation_table[j].seg_name].sh_addr +
           relocation_table[j].relocation.r_offset;
 
       seg_lists[relocation_table[j].seg_name]->reloc_addr(
@@ -377,8 +377,5 @@ Linker::~Linker() {
     delete v;
   }
   symbol_def.clear();
-  for (Elf_file *file : elfs) {
-    delete file;
-  }
   elfs.clear();
 }

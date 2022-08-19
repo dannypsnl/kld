@@ -2,6 +2,7 @@
 
 #include "elf_file.h"
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,7 +22,7 @@ struct SegList {
   unsigned int offset;
   unsigned int size;
   unsigned int begin;
-  vector<Elf_file *> owner_list;
+  vector<Elf_file> owner_list;
   vector<Block *> blocks;
 
   void alloc_addr(string name, unsigned int &base, unsigned int &off);
@@ -33,8 +34,8 @@ struct SegList {
 /// SymLink
 struct SymLink {
   string name;
-  Elf_file *recv;
-  Elf_file *prov;
+  optional<Elf_file> recv;
+  optional<Elf_file> prov;
 };
 
 #define START "_start"
@@ -46,10 +47,9 @@ struct SymLink {
 class Linker {
   vector<string> seg_names;
   Elf_file exe;
-  Elf_file *start_owner;
 
 public:
-  vector<Elf_file *> elfs;
+  vector<Elf_file> elfs;
   map<string, SegList *> seg_lists;
   vector<SymLink *> symbol_links;
   vector<SymLink *> symbol_def;
