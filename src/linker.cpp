@@ -260,7 +260,8 @@ void Linker::assemble_executable() {
   exe.elf_file_header.e_phoff = 52;
   exe.elf_file_header.e_phentsize = 32;
   exe.elf_file_header.e_phnum = seg_names.size();
-  char *str = exe.shstrtab = new char[shstrtabSize];
+  char *str = new char[shstrtabSize];
+  exe.shstrtab = str;
   exe.shstrtab_size = shstrtabSize;
   int index = 0;
   map<string, int> shstr_index{};
@@ -304,7 +305,8 @@ void Linker::assemble_executable() {
   cur_off += (1 + symbol_def.size()) * 16;
   exe.add_section_header(".strtab", SHT_STRTAB, 0, 0, cur_off, strtab_size,
                          SHN_UNDEF, 0, 1, 0);
-  str = exe.strtab = new char[strtab_size];
+  str = new char[strtab_size];
+  exe.strtab = str;
   exe.strtab_size = strtab_size;
   index = 0;
   map<string, int> str_index;

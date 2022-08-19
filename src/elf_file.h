@@ -18,14 +18,13 @@ public:
   vector<string> sym_names;
   vector<RelocationItem> relocation_table;
   string elf_dir;
-  char *shstrtab;
+  string shstrtab;
   unsigned int shstrtab_size;
-  char *strtab;
+  string strtab;
   unsigned int strtab_size;
 
 public:
   Elf_file();
-  ~Elf_file();
 
   void read_elf(string dir);
   void get_data(char *buf, Elf32_Off offset, Elf32_Word size);
