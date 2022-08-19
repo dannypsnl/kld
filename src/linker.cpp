@@ -1,6 +1,6 @@
 #include "linker.h"
+#include <iostream>
 #include <stdio.h>
-#include <string.h>
 
 Block::Block(char *d, unsigned int off, unsigned int s)
     : data{d}, offset{off}, size{s} {}
@@ -71,7 +71,7 @@ Linker::Linker() {
     seg_lists[seg_names[i]] = new SegList();
 }
 
-void Linker::add_elf(const char *dir) {
+void Linker::add_elf(string dir) {
   Elf_file *elf = new Elf_file();
   elf->read_elf(dir);
   elfs.push_back(elf);
@@ -121,9 +121,9 @@ bool Linker::symbol_is_valid() {
         continue;
       }
       if (symbol_def[i]->name == symbol_def[j]->name) {
-        printf("symbol %s in %s and %s are redefined.\n",
-               symbol_def[i]->name.c_str(), symbol_def[i]->prov->elf_dir,
-               symbol_def[j]->prov->elf_dir);
+        cout << "symbol " << symbol_def[i]->name << " in "
+             << symbol_def[i]->prov->elf_dir << " and "
+             << symbol_def[j]->prov->elf_dir << " are redefined." << endl;
         flag = false;
       }
     }
@@ -160,9 +160,8 @@ bool Linker::symbol_is_valid() {
         type = "symbol";
         break;
       }
-      printf("in file %s type %s named %s is undefined.\n",
-             symbol_links[i]->recv->elf_dir, type.c_str(),
-             symbol_links[i]->name.c_str());
+      cout << "in file " << symbol_links[i]->recv->elf_dir << " type " << type
+           << " named " << symbol_links[i]->name << " is undefined." << endl;
       if (flag) {
         flag = false;
       }

@@ -2,6 +2,7 @@
 
 #include "elf_file.h"
 #include <map>
+#include <string>
 #include <vector>
 
 using namespace std;
@@ -56,7 +57,7 @@ public:
 public:
   Linker();
   /// add new elf file
-  void add_elf(const char *dir);
+  void add_elf(string dir);
   /// collect information from owned elf files
   void collect_info();
   /// check symbol is valid

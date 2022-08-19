@@ -1,6 +1,6 @@
 #include "linker.h"
 #include <boost/algorithm/string/predicate.hpp>
-#include<iostream>
+#include <iostream>
 
 int main(int argc, char *argv[]) {
   if (argc == 1) {
@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
       linker.link(arg.c_str());
       break;
     }
-    linker.add_elf(arg.c_str());
+    linker.add_elf(arg);
     i++;
   }
   return 0;

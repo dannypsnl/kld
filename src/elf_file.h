@@ -17,7 +17,7 @@ public:
   map<string, Elf32_Sym *> symbol_table;
   vector<string> sym_names;
   vector<RelocationItem *> relocation_table;
-  char *elf_dir;
+  string elf_dir;
   char *shstrtab;
   unsigned int shstrtab_size;
   char *strtab;
@@ -25,7 +25,7 @@ public:
 
 public:
   Elf_file();
-  void read_elf(const char *dir);
+  void read_elf(string dir);
   void get_data(char *buf, Elf32_Off offset, Elf32_Word size);
   int get_seg_index(string segName);
   int get_symbol_index(string symName);

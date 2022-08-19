@@ -3,7 +3,7 @@
 #include <string.h>
 
 void Elf_file::get_data(char *buf, Elf32_Off offset, Elf32_Word size) {
-  FILE *fp = fopen(elf_dir, "rb");
+  FILE *fp = fopen(elf_dir.c_str(), "rb");
   rewind(fp);
   fseek(fp, offset, 0);
   fread(buf, size, 1, fp);
@@ -13,14 +13,12 @@ void Elf_file::get_data(char *buf, Elf32_Off offset, Elf32_Word size) {
 Elf_file::Elf_file() {
   shstrtab = NULL;
   strtab = NULL;
-  elf_dir = NULL;
+  elf_dir = "";
 }
 
-void Elf_file::read_elf(const char *dir) {
-  string d = dir;
-  elf_dir = new char[d.length() + 1];
-  strcpy(elf_dir, dir);
-  FILE *fp = fopen(dir, "rb");
+void Elf_file::read_elf(string dir) {
+  elf_dir = dir;
+  FILE *fp = fopen(elf_dir.c_str(), "rb");
   rewind(fp);
   fread(&elf_file_header, sizeof(Elf32_Ehdr), 1, fp);
 
@@ -219,8 +217,5 @@ Elf_file::~Elf_file() {
   }
   if (strtab != NULL) {
     delete[] strtab;
-  }
-  if (elf_dir) {
-    delete elf_dir;
   }
 }
