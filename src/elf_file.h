@@ -14,7 +14,7 @@ public:
   vector<Elf32_Phdr> program_header_table;
   map<string, Elf32_Shdr> section_header_table;
   vector<string> shdr_names;
-  map<string, Elf32_Sym *> symbol_table;
+  map<string, Elf32_Sym> symbol_table;
   vector<string> sym_names;
   vector<RelocationItem *> relocation_table;
   string elf_dir;
@@ -37,7 +37,8 @@ public:
                           Elf32_Off sh_offset, Elf32_Word sh_size,
                           Elf32_Word sh_link, Elf32_Word sh_info,
                           Elf32_Word sh_addralign, Elf32_Word sh_entsize);
-  void add_symbol(string st_name, Elf32_Sym *);
+  void add_empty_symbol();
+  void add_symbol(string st_name, Elf32_Sym &sym);
   void write_elf(const char *dir, int flag);
   ~Elf_file();
 };

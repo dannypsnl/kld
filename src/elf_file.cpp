@@ -60,15 +60,13 @@ void Elf_file::read_elf(string dir) {
   Elf32_Shdr sh_symbol_tab = section_header_table[".symtab"];
   fseek(fp, sh_symbol_tab.sh_offset, 0);
   int symNum = sh_symbol_tab.sh_size / 16;
-  vector<Elf32_Sym *> sym_list;
+  vector<Elf32_Sym> sym_list;
   for (auto i = 0; i < symNum; ++i) {
-    Elf32_Sym *sym = new Elf32_Sym();
-    fread(sym, 16, 1, fp);
+    Elf32_Sym sym;
+    fread(&sym, 16, 1, fp);
     sym_list.push_back(sym);
-    string name(str_tab_data + sym->st_name);
-    if (name.empty())
-      delete sym;
-    else {
+    string name(str_tab_data + sym.st_name);
+    if (!name.empty()) {
       symbol_table[name] = sym;
     }
   }
@@ -80,7 +78,7 @@ void Elf_file::read_elf(string dir) {
       for (int j = 0; j < relNum; ++j) {
         Elf32_Rel *rel = new Elf32_Rel();
         fread(rel, 8, 1, fp);
-        string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)]->st_name);
+        string name(str_tab_data + sym_list[ELF32_R_SYM(rel->r_info)].st_name);
         relocation_table.push_back(
             new RelocationItem(key.substr(4), rel, name));
       }
@@ -147,23 +145,25 @@ void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
   shdr_names.push_back(sh_name);
 }
 
-void Elf_file::add_symbol(string st_name, Elf32_Sym *s) {
-  Elf32_Sym *sym = new Elf32_Sym();
-  if (st_name == "") {
-    sym->st_name = 0;
-    sym->st_value = 0;
-    sym->st_size = 0;
-    sym->st_info = 0;
-    sym->st_other = 0;
-    sym->st_shndx = 0;
-  } else {
-    sym->st_name = 0;
-    sym->st_value = s->st_value;
-    sym->st_size = s->st_size;
-    sym->st_info = s->st_info;
-    sym->st_other = s->st_other;
-    sym->st_shndx = s->st_shndx;
-  }
+void Elf_file::add_empty_symbol() {
+  Elf32_Sym sym;
+  sym.st_name = 0;
+  sym.st_value = 0;
+  sym.st_size = 0;
+  sym.st_info = 0;
+  sym.st_other = 0;
+  sym.st_shndx = 0;
+  symbol_table[""] = sym;
+  sym_names.push_back("");
+}
+void Elf_file::add_symbol(string st_name, Elf32_Sym &s) {
+  Elf32_Sym sym;
+  sym.st_name = 0;
+  sym.st_value = s.st_value;
+  sym.st_size = s.st_size;
+  sym.st_info = s.st_info;
+  sym.st_other = s.st_other;
+  sym.st_shndx = s.st_shndx;
   symbol_table[st_name] = sym;
   sym_names.push_back(st_name);
 }
@@ -188,8 +188,8 @@ void Elf_file::write_elf(const char *dir, int flag) {
       fwrite(&sh, elf_file_header.e_shentsize, 1, fp);
     }
     for (auto name : sym_names) {
-      Elf32_Sym *sym = symbol_table[name];
-      fwrite(sym, sizeof(Elf32_Sym), 1, fp);
+      Elf32_Sym sym = symbol_table[name];
+      fwrite(&sym, sizeof(Elf32_Sym), 1, fp);
     }
     fwrite(strtab, strtab_size, 1, fp);
     fclose(fp);
@@ -204,9 +204,6 @@ Elf_file::~Elf_file() {
   program_header_table.clear();
   section_header_table.clear();
   shdr_names.clear();
-  for (auto const &[key, val] : symbol_table) {
-    delete val;
-  }
   symbol_table.clear();
   for (RelocationItem *v : relocation_table) {
     delete v;
