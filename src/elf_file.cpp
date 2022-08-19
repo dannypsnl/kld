@@ -1,6 +1,5 @@
 #include "elf_file.h"
 #include <stdio.h>
-#include <string.h>
 
 void Elf_file::get_data(char *buf, Elf32_Off offset, Elf32_Word size) {
   FILE *fp = fopen(elf_dir.c_str(), "rb");
