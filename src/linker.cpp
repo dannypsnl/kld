@@ -31,14 +31,14 @@ void SegList::alloc_addr(string name, unsigned int &base, unsigned int &off) {
   this->size = 0;
   for (auto elf_file : owner_list) {
     size += (DISC_ALIGN - size % DISC_ALIGN) % DISC_ALIGN;
-    Elf32_Shdr *seg = elf_file->section_header_table[name];
+    Elf32_Shdr &seg = elf_file->section_header_table[name];
     if (name != ".bss") {
-      char *buf = new char[seg->sh_size];
-      elf_file->get_data(buf, seg->sh_offset, seg->sh_size);
-      blocks.push_back(new Block(buf, size, seg->sh_size));
+      char *buf = new char[seg.sh_size];
+      elf_file->get_data(buf, seg.sh_offset, seg.sh_size);
+      blocks.push_back(new Block(buf, size, seg.sh_size));
     }
-    seg->sh_addr = base + size;
-    size += seg->sh_size;
+    seg.sh_addr = base + size;
+    size += seg.sh_size;
   }
   base += size;
   if (name != ".bss")
@@ -184,7 +184,7 @@ void Linker::symbol_parser() {
     Elf32_Sym *sym = sym_link->prov->symbol_table[sym_link->name];
     string seg_name = sym_link->prov->shdr_names[sym->st_shndx];
     sym->st_value =
-        sym->st_value + sym_link->prov->section_header_table[seg_name]->sh_addr;
+        sym->st_value + sym_link->prov->section_header_table[seg_name].sh_addr;
   }
   for (auto sym_link : symbol_links) {
     Elf32_Sym *provsym = sym_link->prov->symbol_table[sym_link->name];
@@ -201,7 +201,7 @@ void Linker::relocate() {
       unsigned int symbol_addr = sym->st_value;
       unsigned int relocation_addr =
           elf_file->section_header_table[relocation_table[j]->seg_name]
-              ->sh_addr +
+              .sh_addr +
           relocation_table[j]->relocation->r_offset;
 
       seg_lists[relocation_table[j]->seg_name]->reloc_addr(
@@ -291,7 +291,7 @@ void Linker::assemble_executable() {
   cur_off += 40 * (4 + seg_names.size());
   exe.add_section_header(".symtab", SHT_SYMTAB, 0, 0, cur_off,
                          (1 + symbol_def.size()) * 16, 0, 0, 1, 16);
-  exe.section_header_table[".symtab"]->sh_link =
+  exe.section_header_table[".symtab"].sh_link =
       exe.get_seg_index(".symtab") + 1;
   int strtab_size = 0;
   exe.add_symbol("", NULL);
@@ -320,8 +320,8 @@ void Linker::assemble_executable() {
   for (auto const &[name, symbol] : exe.symbol_table) {
     symbol->st_name = str_index[name];
   }
-  for (auto const &[name, sec_header] : exe.section_header_table) {
-    sec_header->sh_name = shstr_index[name];
+  for (auto &[name, sec_header] : exe.section_header_table) {
+    sec_header.sh_name = shstr_index[name];
   }
 }
 

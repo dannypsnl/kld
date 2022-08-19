@@ -12,7 +12,7 @@ class Elf_file {
 public:
   Elf32_Ehdr elf_file_header;
   vector<Elf32_Phdr> program_header_table;
-  map<string, Elf32_Shdr *> section_header_table;
+  map<string, Elf32_Shdr> section_header_table;
   vector<string> shdr_names;
   map<string, Elf32_Sym *> symbol_table;
   vector<string> sym_names;
