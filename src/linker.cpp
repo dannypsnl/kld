@@ -123,20 +123,18 @@ bool Linker::symbol_is_valid() {
     printf("linker cannot find entry %s.\n", START);
     flag = false;
   }
-  for (auto i = 0; i < symbol_links.size(); ++i) {
-    for (auto j = 0; j < symbol_def.size(); ++j) {
-      if (ELF32_ST_BIND(
-              symbol_def[j].prov->symbol_table[symbol_def[j].name].st_info) !=
+  for (auto &sym_link : symbol_links) {
+    for (auto &sym_def : symbol_def) {
+      if (ELF32_ST_BIND(sym_def.prov->symbol_table[sym_def.name].st_info) !=
           STB_GLOBAL)
         continue;
-      if (symbol_links[i].name == symbol_def[j].name) {
-        symbol_links[i].prov = symbol_def[j].prov;
-        symbol_def[j].recv = symbol_def[j].prov;
+      if (sym_link.name == sym_def.name) {
+        sym_link.prov = sym_def.prov;
+        sym_def.recv = sym_def.prov;
       }
     }
-    if (!symbol_links[i].prov) {
-      unsigned char info =
-          symbol_links[i].recv->symbol_table[symbol_links[i].name].st_info;
+    if (!sym_link.prov) {
+      unsigned char info = sym_link.recv->symbol_table[sym_link.name].st_info;
       string type;
       switch (ELF32_ST_TYPE(info)) {
       case STT_OBJECT:
@@ -149,8 +147,8 @@ bool Linker::symbol_is_valid() {
         type = "symbol";
         break;
       }
-      cout << "in file " << symbol_links[i].recv->elf_dir << " type " << type
-           << " named " << symbol_links[i].name << " is undefined." << endl;
+      cout << "in file " << sym_link.recv->elf_dir << " type " << type
+           << " named " << sym_link.name << " is undefined." << endl;
       if (flag) {
         flag = false;
       }
