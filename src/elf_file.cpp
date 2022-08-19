@@ -85,7 +85,7 @@ void Elf_file::read_elf(string dir) {
 
 int Elf_file::get_seg_index(string seg_name) {
   int index = 0;
-  for (auto name : shdr_names) {
+  for (string &name : shdr_names) {
     if (name == seg_name)
       break;
     ++index;
@@ -95,8 +95,8 @@ int Elf_file::get_seg_index(string seg_name) {
 
 int Elf_file::get_symbol_index(string symbol_name) {
   int index = 0;
-  for (auto i = 0; i < sym_names.size(); ++i) {
-    if (shdr_names[i] == symbol_name)
+  for (string &name : sym_names) {
+    if (name == symbol_name)
       break;
     ++index;
   }
