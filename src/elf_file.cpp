@@ -108,14 +108,16 @@ void Elf_file::add_program_header(Elf32_Word type, Elf32_Off off,
                                   Elf32_Addr vaddr, Elf32_Word filesz,
                                   Elf32_Word memsz, Elf32_Word flags,
                                   Elf32_Word align) {
-  Elf32_Phdr ph;
-  ph.p_type = type;
-  ph.p_offset = off;
-  ph.p_vaddr = ph.p_paddr = vaddr;
-  ph.p_filesz = filesz;
-  ph.p_memsz = memsz;
-  ph.p_flags = flags;
-  ph.p_align = align;
+  Elf32_Phdr ph{
+      .p_type = type,
+      .p_offset = off,
+      .p_vaddr = vaddr,
+      .p_paddr = vaddr,
+      .p_filesz = filesz,
+      .p_memsz = memsz,
+      .p_flags = flags,
+      .p_align = align,
+  };
   program_header_table.push_back(ph);
 }
 
@@ -125,40 +127,43 @@ void Elf_file::add_section_header(string sh_name, Elf32_Word sh_type,
                                   Elf32_Word sh_link, Elf32_Word sh_info,
                                   Elf32_Word sh_addralign,
                                   Elf32_Word sh_entsize) {
-  Elf32_Shdr sh;
-  sh.sh_name = 0;
-  sh.sh_type = sh_type;
-  sh.sh_flags = sh_flags;
-  sh.sh_addr = sh_addr;
-  sh.sh_offset = sh_offset;
-  sh.sh_size = sh_size;
-  sh.sh_link = sh_link;
-  sh.sh_info = sh_info;
-  sh.sh_addralign = sh_addralign;
-  sh.sh_entsize = sh_entsize;
+  Elf32_Shdr sh{
+      .sh_name = 0,
+      .sh_type = sh_type,
+      .sh_flags = sh_flags,
+      .sh_addr = sh_addr,
+      .sh_offset = sh_offset,
+      .sh_size = sh_size,
+      .sh_link = sh_link,
+      .sh_info = sh_info,
+      .sh_addralign = sh_addralign,
+      .sh_entsize = sh_entsize,
+  };
   section_header_table[sh_name] = sh;
   shdr_names.push_back(sh_name);
 }
 
 void Elf_file::add_empty_symbol() {
-  Elf32_Sym sym;
-  sym.st_name = 0;
-  sym.st_value = 0;
-  sym.st_size = 0;
-  sym.st_info = 0;
-  sym.st_other = 0;
-  sym.st_shndx = 0;
+  Elf32_Sym sym{
+      .st_name = 0,
+      .st_value = 0,
+      .st_size = 0,
+      .st_info = 0,
+      .st_other = 0,
+      .st_shndx = 0,
+  };
   symbol_table[""] = sym;
   sym_names.push_back("");
 }
 void Elf_file::add_symbol(string st_name, Elf32_Sym &s) {
-  Elf32_Sym sym;
-  sym.st_name = 0;
-  sym.st_value = s.st_value;
-  sym.st_size = s.st_size;
-  sym.st_info = s.st_info;
-  sym.st_other = s.st_other;
-  sym.st_shndx = s.st_shndx;
+  Elf32_Sym sym{
+      .st_name = 0,
+      .st_value = s.st_value,
+      .st_size = s.st_size,
+      .st_info = s.st_info,
+      .st_other = s.st_other,
+      .st_shndx = s.st_shndx,
+  };
   symbol_table[st_name] = sym;
   sym_names.push_back(st_name);
 }
