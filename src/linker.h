@@ -49,7 +49,7 @@ class Linker {
   Elf_file exe;
 
 public:
-  vector<Elf_file> elfs;
+  vector<Elf_file> elf_files;
   map<string, SegList *> seg_lists;
   vector<SymLink> symbol_links;
   vector<SymLink> symbol_def;

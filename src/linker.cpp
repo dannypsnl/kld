@@ -74,12 +74,12 @@ Linker::Linker() {
 void Linker::add_elf(string dir) {
   Elf_file elf;
   elf.read_elf(dir);
-  elfs.push_back(elf);
+  elf_files.push_back(elf);
 }
 
 void Linker::collect_info() {
-  for (auto i = 0; i < elfs.size(); ++i) {
-    Elf_file &elf = elfs[i];
+  for (auto i = 0; i < elf_files.size(); ++i) {
+    Elf_file &elf = elf_files[i];
     for (auto name : seg_names) {
       if (elf.section_header_table.count(name)) {
         seg_lists[name]->owner_list.push_back(elf);
@@ -191,7 +191,7 @@ void Linker::symbol_parser() {
 }
 
 void Linker::relocate() {
-  for (Elf_file &elf_file : elfs) {
+  for (Elf_file &elf_file : elf_files) {
     auto relocation_table = elf_file.relocation_table;
     for (auto j = 0; j < relocation_table.size(); ++j) {
       Elf32_Sym &sym = elf_file.symbol_table[relocation_table[j].rel_name];
@@ -369,5 +369,5 @@ Linker::~Linker() {
   seg_lists.clear();
   symbol_links.clear();
   symbol_def.clear();
-  elfs.clear();
+  elf_files.clear();
 }
