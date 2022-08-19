@@ -6,14 +6,6 @@ Block::Block(char *d, unsigned int off, unsigned int s)
     : data{d}, offset{off}, size{s} {}
 Block::~Block() { delete[] data; }
 
-SegList::~SegList() {
-  owner_list.clear();
-  for (auto i = 0; i < blocks.size(); ++i) {
-    delete blocks[i];
-  }
-  blocks.clear();
-}
-
 void SegList::alloc_addr(string name, unsigned int &base, unsigned int &off) {
   begin = off;
   if (name != ".bss") {
@@ -35,7 +27,7 @@ void SegList::alloc_addr(string name, unsigned int &base, unsigned int &off) {
     if (name != ".bss") {
       char *buf = new char[seg.sh_size];
       elf_file.get_data(buf, seg.sh_offset, seg.sh_size);
-      blocks.push_back(new Block(buf, size, seg.sh_size));
+      blocks.push_back(Block(buf, size, seg.sh_size));
     }
     seg.sh_addr = base + size;
     size += seg.sh_size;
@@ -49,10 +41,10 @@ void SegList::reloc_addr(unsigned int rel_addr, unsigned char type,
                          unsigned int sym_addr) {
   unsigned int relOffset = rel_addr - base_addr;
   for (auto i = 0; i < blocks.size(); ++i) {
-    if (blocks[i]->offset <= relOffset &&
-        blocks[i]->offset + blocks[i]->size > relOffset) {
-      auto b = blocks[i];
-      int *pAddr = (int *)(b->data + relOffset - b->offset);
+    if (blocks[i].offset <= relOffset &&
+        blocks[i].offset + blocks[i].size > relOffset) {
+      Block &b = blocks[i];
+      int *pAddr = (int *)(b.data + relOffset - b.offset);
       if (type == R_386_32) {
         *pAddr = sym_addr;
       } else if (type == R_386_PC32) {
@@ -332,17 +324,17 @@ void Linker::export_elf(const char *dir) {
     while (padnum--)
       fwrite(pad, 1, 1, fp);
     if (seg_names[i] != ".bss") {
-      Block *old = NULL;
+      optional<Block> old{nullopt};
       char instPad[1] = {(char)0x90};
       for (auto j = 0; j < sl->blocks.size(); ++j) {
-        Block *b = sl->blocks[j];
-        if (old != NULL) {
-          padnum = b->offset - (old->offset + old->size);
+        Block &b = sl->blocks[j];
+        if (old) {
+          padnum = b.offset - (old->offset + old->size);
           while (padnum--)
             fwrite(instPad, 1, 1, fp);
         }
         old = b;
-        fwrite(b->data, b->size, 1, fp);
+        fwrite(b.data, b.size, 1, fp);
       }
     }
   }

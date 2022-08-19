@@ -23,12 +23,11 @@ struct SegList {
   unsigned int size;
   unsigned int begin;
   vector<Elf_file> owner_list;
-  vector<Block *> blocks;
+  vector<Block> blocks;
 
   void alloc_addr(string name, unsigned int &base, unsigned int &off);
   void reloc_addr(unsigned int relAddr, unsigned char type,
                   unsigned int symAddr);
-  ~SegList();
 };
 
 /// SymLink
