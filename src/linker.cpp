@@ -58,8 +58,9 @@ Linker::Linker() {
   seg_names.push_back(".text");
   seg_names.push_back(".data");
   seg_names.push_back(".bss");
-  for (auto i = 0; i < seg_names.size(); ++i)
-    seg_lists[seg_names[i]] = SegList();
+  for (string &name : seg_names) {
+    seg_lists[name] = SegList();
+  }
 }
 
 void Linker::add_elf(string dir) {
