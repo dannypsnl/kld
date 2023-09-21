@@ -72,7 +72,7 @@ void Linker::add_elf(string dir) {
 void Linker::collect_info() {
   for (auto i = 0; i < elf_files.size(); ++i) {
     Elf_file &elf = elf_files[i];
-    for (auto name : seg_names) {
+    for (auto &name : seg_names) {
       if (elf.section_header_table.count(name)) {
         seg_lists[name].owner_list.push_back(elf);
       }
@@ -313,19 +313,20 @@ void Linker::assemble_executable() {
 }
 
 void Linker::export_elf(const char *dir) {
-  exe.write_elf(dir, 1);
+  exe.write_elf(dir);
   FILE *fp = fopen(dir, "a+");
   char pad[1] = {0};
-  for (auto i = 0; i < seg_names.size(); ++i) {
-    SegList &sl = seg_lists[seg_names[i]];
+  for (auto &seg_name : seg_names) {
+    const SegList &sl = seg_lists[seg_name];
     int padnum = sl.offset - sl.begin;
-    while (padnum--)
+    while (padnum--) {
       fwrite(pad, 1, 1, fp);
-    if (seg_names[i] != ".bss") {
+    }
+    if (seg_name != ".bss") {
       optional<Block> old{nullopt};
       char instPad[1] = {(char)0x90};
       for (auto j = 0; j < sl.blocks.size(); ++j) {
-        Block &b = sl.blocks[j];
+        const Block &b = sl.blocks[j];
         if (old) {
           padnum = b.offset - (old->offset + old->size);
           while (padnum--)
@@ -337,7 +338,7 @@ void Linker::export_elf(const char *dir) {
     }
   }
   fclose(fp);
-  exe.write_elf(dir, 2);
+  exe.write_elf2(dir);
 }
 
 bool Linker::link(const char *dir) {

@@ -40,5 +40,6 @@ public:
                           Elf32_Word sh_addralign, Elf32_Word sh_entsize);
   void add_empty_symbol();
   void add_symbol(string st_name, Elf32_Sym &sym);
-  void write_elf(const char *dir, int flag);
+  void write_elf(const char *dir);
+  void write_elf2(const char *dir);
 };
