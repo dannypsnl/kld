@@ -1,5 +1,6 @@
 .xmake/
 build/
 .ccls
+.cache/
 .vagrant/
 compile_commands.json
